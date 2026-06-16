@@ -1,0 +1,293 @@
+@startuml UML de patrones
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+class Scrim <<DomainReference>> {
+  - id: String
+  - estadoActual: String
+  + actualizarEstado(nuevoEstado: String): void
+}
+
+package "State - Ciclo de vida del Scrim" {
+  class ScrimContext <<State>> {
+    - state: ScrimState
+    - scrim: Scrim
+    - eventBus: DomainEventBus
+    + cambiarEstado(nuevoEstado: ScrimState): void
+    + postular(): void
+    + confirmar(): void
+    + iniciar(): void
+    + finalizar(): void
+    + cancelar(): void
+  }
+
+  interface ScrimState <<State>> {
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+  }
+
+  class BuscandoJugadoresState <<State>> {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+  }
+
+  class LobbyArmadoState <<State>> {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+  }
+
+  class ConfirmadoState <<State>> {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+  }
+
+  class EnJuegoState <<State>> {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+  }
+
+  class FinalizadoState <<State>> {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+  }
+
+  class CanceladoState <<State>> {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+  }
+}
+
+package "Strategy - Matchmaking" {
+  interface MatchmakingStrategy <<Strategy>> {
+    + seleccionarJugadores(scrim: Scrim): List<String>
+  }
+
+  class ByMMRStrategy <<Strategy>> {
+    - toleranciaMMR: Integer
+    + seleccionarJugadores(scrim: Scrim): List<String>
+  }
+
+  class ByLatencyStrategy <<Strategy>> {
+    - latenciaObjetivo: Integer
+    + seleccionarJugadores(scrim: Scrim): List<String>
+  }
+
+  class ByHistoryStrategy <<Strategy>> {
+    - partidasMinimas: Integer
+    + seleccionarJugadores(scrim: Scrim): List<String>
+  }
+
+  class MatchmakingService <<Strategy>> {
+    - strategy: MatchmakingStrategy
+    + setStrategy(strategy: MatchmakingStrategy): void
+    + ejecutarMatchmaking(scrim: Scrim): List<String>
+  }
+}
+
+package "Observer - Eventos de dominio" {
+  class DomainEvent <<Observer>> {
+    - id: String
+    - timestamp: DateTime
+    - tipo: String
+    + describir(): String
+  }
+
+  interface Subscriber <<Observer>> {
+    + onEvent(event: DomainEvent): void
+  }
+
+  class DomainEventBus <<Observer>> {
+    - subscribers: List<Subscriber>
+    + subscribe(subscriber: Subscriber): void
+    + unsubscribe(subscriber: Subscriber): void
+    + publish(event: DomainEvent): void
+  }
+
+  class NotificationSubscriber <<Observer>> {
+    - factory: NotifierFactory
+    + onEvent(event: DomainEvent): void
+  }
+}
+
+package "Abstract Factory - Notificadores" {
+  interface Notifier <<AbstractFactory>> {
+    + send(event: DomainEvent): void
+  }
+
+  class EmailNotifier <<AbstractFactory>> {
+    - provider: ExternalNotificationProvider
+    + send(event: DomainEvent): void
+  }
+
+  class PushNotifier <<AbstractFactory>> {
+    - provider: ExternalNotificationProvider
+    + send(event: DomainEvent): void
+  }
+
+  class DiscordNotifier <<AbstractFactory>> {
+    - provider: ExternalNotificationProvider
+    + send(event: DomainEvent): void
+  }
+
+  interface NotifierFactory <<AbstractFactory>> {
+    + createNotifier(canal: String): Notifier
+  }
+
+  class ChannelNotifierFactory <<AbstractFactory>> {
+    - canalesSoportados: List<String>
+    + createNotifier(canal: String): Notifier
+  }
+}
+
+package "Adapter - Servicios externos" {
+  interface ExternalNotificationProvider <<Adapter>> {
+    + sendMessage(destination: String, payload: String): void
+  }
+
+  class DiscordAdapter <<Adapter>> {
+    - api: DiscordAPI
+    + sendMessage(destination: String, payload: String): void
+  }
+
+  class SendGridAdapter <<Adapter>> {
+    - api: SendGridAPI
+    + sendMessage(destination: String, payload: String): void
+  }
+
+  class FirebaseAdapter <<Adapter>> {
+    - api: FirebaseAPI
+    + sendMessage(destination: String, payload: String): void
+  }
+
+  class DiscordAPI <<ExternalSystem>> {
+    - webhookUrl: String
+    + postToChannel(channelId: String, message: String): void
+  }
+
+  class SendGridAPI <<ExternalSystem>> {
+    - apiKey: String
+    + sendEmail(email: String, subject: String, body: String): void
+  }
+
+  class FirebaseAPI <<ExternalSystem>> {
+    - projectId: String
+    + sendPush(token: String, message: String): void
+  }
+}
+
+ScrimContext "1" *-- "1" Scrim : usa
+ScrimContext "1" o-- "1" ScrimState : estado
+
+BuscandoJugadoresState ..|> ScrimState : implementa
+LobbyArmadoState ..|> ScrimState : implementa
+ConfirmadoState ..|> ScrimState : implementa
+EnJuegoState ..|> ScrimState : implementa
+FinalizadoState ..|> ScrimState : implementa
+CanceladoState ..|> ScrimState : implementa
+
+MatchmakingService "1" o-- "1" MatchmakingStrategy : usa
+ByMMRStrategy ..|> MatchmakingStrategy : implementa
+ByLatencyStrategy ..|> MatchmakingStrategy : implementa
+ByHistoryStrategy ..|> MatchmakingStrategy : implementa
+
+DomainEventBus "1" o-- "0..*" Subscriber : registra
+NotificationSubscriber ..|> Subscriber : implementa
+DomainEventBus "1" ..> "0..*" DomainEvent : publica
+
+NotifierFactory "1" ..> "1" Notifier : crea
+ChannelNotifierFactory ..|> NotifierFactory : implementa
+EmailNotifier ..|> Notifier : implementa
+PushNotifier ..|> Notifier : implementa
+DiscordNotifier ..|> Notifier : implementa
+
+DiscordAdapter ..|> ExternalNotificationProvider : adapta
+SendGridAdapter ..|> ExternalNotificationProvider : adapta
+FirebaseAdapter ..|> ExternalNotificationProvider : adapta
+DiscordAdapter "1" o-- "1" DiscordAPI : llama
+SendGridAdapter "1" o-- "1" SendGridAPI : llama
+FirebaseAdapter "1" o-- "1" FirebaseAPI : llama
+
+ScrimContext "1" o-- "1" DomainEventBus : emite
+DomainEventBus "1" --> "0..*" NotificationSubscriber : notifica
+NotificationSubscriber "1" o-- "1" NotifierFactory : usa
+
+ChannelNotifierFactory "1" ..> "0..*" EmailNotifier : EMAIL
+ChannelNotifierFactory "1" ..> "0..*" PushNotifier : PUSH
+ChannelNotifierFactory "1" ..> "0..*" DiscordNotifier : DISCORD
+
+DiscordNotifier "1" o-- "1" DiscordAdapter : usa
+EmailNotifier "1" o-- "1" SendGridAdapter : usa
+PushNotifier "1" o-- "1" FirebaseAdapter : usa
+
+note right of ScrimContext
+  State permite controlar el ciclo de vida
+  del Scrim delegando cada accion en el
+  estado actual. Asi cada estado define
+  que operaciones permite y a que estado
+  puede avanzar.
+end note
+
+note bottom of MatchmakingService
+  Strategy permite cambiar el algoritmo de
+  matchmaking sin modificar el servicio.
+  El sistema puede seleccionar jugadores
+  por MMR, latencia o historial usando
+  distintas implementaciones.
+end note
+
+note left of DomainEventBus
+  Observer permite publicar eventos del
+  sistema sin acoplar al emisor con los
+  receptores. El bus recibe un evento y
+  lo distribuye a los suscriptores.
+end note
+
+note bottom of NotificationSubscriber
+  Observer obtiene el canal del evento,
+  solicita un Notifier a la Factory
+  y ejecuta send(event).
+
+  Abstract Factory centraliza la creacion
+  del notificador adecuado segun el canal.
+  El subscriber no conoce clases concretas:
+  solo pide un Notifier y lo utiliza.
+end note
+
+note right of DiscordAdapter
+  Adapter permite integrar servicios externos
+  mediante una interfaz comun del sistema.
+  Cada adapter traduce las llamadas propias
+  de eScrims a la API concreta del proveedor.
+end note
+
+@enduml

@@ -1,0 +1,36 @@
+# Java build output
+out/
+build/
+target/
+bin/
+
+# JVM / logs
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# OS files
+.DS_Store
+Thumbs.db

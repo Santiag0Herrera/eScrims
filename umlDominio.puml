@@ -1,0 +1,175 @@
+@startuml UML de dominio
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+
+class Usuario {
+  - id: String
+  - username: String
+  - email: String
+  - passwordHash: String
+  - estadoVerificacion: String
+  - disponibilidadHoraria: String
+  + registrarse(): void
+  + actualizarPerfil(): void
+  + postularse(scrim: Scrim, rolDeseado: String): Postulacion
+  + confirmarParticipacion(scrim: Scrim): Confirmacion
+  + reportarConducta(usuarioReportado: Usuario, scrim: Scrim, motivo: String): ReporteConducta
+}
+
+class PerfilJuego {
+  - id: String
+  - rango : String
+  - mmr: Integer
+  - rolesPreferidos: List<String>
+  + actualizarRango(nuevoRango: String): void
+  + actualizarMMR(nuevoMMR: Integer): void
+}
+
+class Juego {
+  - id: String
+  - nombre: String
+  - descripcion: String
+  + validarFormato(modalidad: String): Boolean
+}
+
+class Region {
+  - id: String
+  - nombre: String
+  - servidor: String
+  + validarLatencia(latencia: Integer): Boolean
+}
+
+class Scrim {
+  - id: String
+  - fechaHora: DateTime
+  - duracionMinutos: Integer
+  - mmrMinimo: Integer
+  - mmrMaximo: Integer
+  - latenciaMaxima: Integer
+  - modalidad: String
+  - estadoActual: String
+  - cantidadJugadores: Integer
+  - formato : String
+  + abrirPostulaciones(): void
+  + cerrarPostulaciones(): void
+  + iniciar(): void
+  + finalizar(): void
+  + cancelar(): void
+  + cambiarEstado(nuevoEstado: String): void
+}
+
+class Equipo {
+  - id: String
+  - lado: String
+  + agregarJugador(usuario: Usuario, rol: String): Participacion
+  + quitarJugador(participacion: Participacion): void
+  + asignarCapitan(participacion: Participacion): void
+}
+
+class Participacion {
+  - id: String
+  - rol: String
+  - esCapitan: Boolean
+  - esSuplente: Boolean
+  - estado: String
+  - fechaIngreso: DateTime
+  + cambiarRol(nuevoRol: String): void
+  + abandonar(): void
+}
+
+class Postulacion {
+  - id: String
+  - rolDeseado: String
+  - estado: String
+  - fechaPostulacion: DateTime
+  + aceptar(): void
+  + rechazar(): void
+}
+
+class Confirmacion {
+  - id: String
+  - confirmado: Boolean
+  - fechaConfirmacion: DateTime
+  + confirmar(): void
+  + revocar(): void
+  + estaConfirmado(): Boolean
+}
+
+class Notificacion {
+  - id: String
+  - tipo: String
+  - canal: String
+  - payload: String
+  - estado: String
+  - fechaEnvio: DateTime
+  + enviar(): void
+  + reintentar(): void
+}
+
+class Estadistica {
+  - id: String
+  - kills: Integer
+  - deaths: Integer
+  - assists: Integer
+  - mvp: Boolean
+  - observaciones: String
+  - resultado : String
+  + calcularKDA(): Decimal
+}
+
+class ComentarioFeedback {
+  - id: String
+  - comentario: String
+  - rating: Integer
+  - estadoModeracion: String
+  - fechaCreacion: DateTime
+  + aprobar(): void
+  + rechazar(): void
+}
+
+class ReporteConducta {
+  - id: String
+  - motivo: String
+  - estado: String
+  - sancion: String
+  - fechaCreacion: DateTime
+  + procesar(): void
+  + resolver(): void
+  + obtenerReportante(): Usuario
+  + obtenerReportado(): Usuario
+}
+
+Usuario "1" *-- "0..*" PerfilJuego : posee perfiles por juego
+Juego "1" o-- "0..*" PerfilJuego : define perfil para juego
+
+Juego "1" <-- "0..*" Scrim : pertenece a juego
+Region "1" <-- "0..*" Scrim : se juega en region
+Region "1" <-- "0..*" Usuario : juega principalmente en
+
+Scrim "1" *-- "2..*" Equipo : contiene
+
+Equipo "1" *-- "0..*" Participacion : registra integrantes
+Usuario "1" <-- "0..*" Participacion : participa en equipos
+
+Usuario "1" <-- "0..*" Postulacion : realiza postulaciones
+Scrim "1" o-- "0..*" Postulacion : recibe postulaciones
+
+Usuario "1" <-- "0..*" Confirmacion : confirma asistencia
+Scrim "1" o-- "0..*" Confirmacion : requiere confirmaciones
+
+Usuario "1" *-- "0..*" Notificacion : recibe
+Scrim "1" o-- "0..*" Notificacion : genera eventos
+
+Usuario "1" <-- "0..*" Estadistica : posee estadisticas
+Scrim "1" o-- "0..*" Estadistica : produce estadisticas
+
+Usuario "1" <-- "0..*" ComentarioFeedback : escribe feedback
+Scrim "1" o-- "0..*" ComentarioFeedback : recibe feedback
+
+Scrim "1" o-- "0..*" ReporteConducta : genera reportes
+Usuario "1" <-- "0..*" ReporteConducta : reportado
+Usuario "1" <-- "0..*" ReporteConducta : creado por
+
+@enduml
