@@ -8,7 +8,20 @@ skinparam packageStyle rectangle
 class Scrim <<DomainReference>> {
   - id: String
   - estadoActual: String
-  + actualizarEstado(nuevoEstado: String): void
+  + cambiarEstado(nuevoEstado: String): void
+  + tieneCupoCompleto(): Boolean
+}
+
+class EScrimsFrame <<Swing>> {
+  - eventBus: DomainEventBus
+  + mostrarInterfaz(): void
+  - configurarEventos(): void
+  - mostrarAlertaFirebase(message: String): void
+  - registrarEvento(message: String): void
+}
+
+class Main <<Application>> {
+  + main(args: String[]): void
 }
 
 package "State - Ciclo de vida del Scrim" {
@@ -30,87 +43,62 @@ package "State - Ciclo de vida del Scrim" {
     + iniciar(context: ScrimContext): void
     + finalizar(context: ScrimContext): void
     + cancelar(context: ScrimContext): void
+    + nombre(): String
+    + canalNotificacion(): String
   }
 
   class BuscandoJugadoresState <<State>> {
     - nombre: String
-    + postular(context: ScrimContext): void
-    + confirmar(context: ScrimContext): void
-    + iniciar(context: ScrimContext): void
-    + finalizar(context: ScrimContext): void
-    + cancelar(context: ScrimContext): void
+    + canalNotificacion(): String
   }
 
   class LobbyArmadoState <<State>> {
     - nombre: String
-    + postular(context: ScrimContext): void
-    + confirmar(context: ScrimContext): void
-    + iniciar(context: ScrimContext): void
-    + finalizar(context: ScrimContext): void
-    + cancelar(context: ScrimContext): void
+    + canalNotificacion(): String
   }
 
   class ConfirmadoState <<State>> {
     - nombre: String
-    + postular(context: ScrimContext): void
-    + confirmar(context: ScrimContext): void
-    + iniciar(context: ScrimContext): void
-    + finalizar(context: ScrimContext): void
-    + cancelar(context: ScrimContext): void
+    + canalNotificacion(): String
   }
 
   class EnJuegoState <<State>> {
     - nombre: String
-    + postular(context: ScrimContext): void
-    + confirmar(context: ScrimContext): void
-    + iniciar(context: ScrimContext): void
-    + finalizar(context: ScrimContext): void
-    + cancelar(context: ScrimContext): void
+    + canalNotificacion(): String
   }
 
   class FinalizadoState <<State>> {
     - nombre: String
-    + postular(context: ScrimContext): void
-    + confirmar(context: ScrimContext): void
-    + iniciar(context: ScrimContext): void
-    + finalizar(context: ScrimContext): void
-    + cancelar(context: ScrimContext): void
+    + canalNotificacion(): String
   }
 
   class CanceladoState <<State>> {
     - nombre: String
-    + postular(context: ScrimContext): void
-    + confirmar(context: ScrimContext): void
-    + iniciar(context: ScrimContext): void
-    + finalizar(context: ScrimContext): void
-    + cancelar(context: ScrimContext): void
+    + canalNotificacion(): String
   }
 }
 
 package "Strategy - Matchmaking" {
   interface MatchmakingStrategy <<Strategy>> {
-    + seleccionarJugadores(scrim: Scrim): List<String>
+    + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
   class ByMMRStrategy <<Strategy>> {
-    - toleranciaMMR: Integer
-    + seleccionarJugadores(scrim: Scrim): List<String>
+    + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
   class ByLatencyStrategy <<Strategy>> {
-    - latenciaObjetivo: Integer
-    + seleccionarJugadores(scrim: Scrim): List<String>
+    + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
   class ByHistoryStrategy <<Strategy>> {
-    - partidasMinimas: Integer
-    + seleccionarJugadores(scrim: Scrim): List<String>
+    + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
   class MatchmakingService <<Strategy>> {
     - strategy: MatchmakingStrategy
     + setStrategy(strategy: MatchmakingStrategy): void
-    + ejecutarMatchmaking(scrim: Scrim): List<String>
+    + ejecutarMatchmaking(scrim: Scrim): List<Postulacion>
   }
 }
 
@@ -119,6 +107,8 @@ package "Observer - Eventos de dominio" {
     - id: String
     - timestamp: DateTime
     - tipo: String
+    - canal: String
+    - payload: Map<String, String>
     + describir(): String
   }
 
@@ -152,6 +142,7 @@ package "Abstract Factory - Notificadores" {
   class PushNotifier <<AbstractFactory>> {
     - provider: ExternalNotificationProvider
     + send(event: DomainEvent): void
+    - mensajePara(event: DomainEvent): String
   }
 
   class DiscordNotifier <<AbstractFactory>> {
@@ -164,7 +155,7 @@ package "Abstract Factory - Notificadores" {
   }
 
   class ChannelNotifierFactory <<AbstractFactory>> {
-    - canalesSoportados: List<String>
+    - canalesSoportados: Map<String, Supplier<Notifier>>
     + createNotifier(canal: String): Notifier
   }
 }
@@ -191,103 +182,86 @@ package "Adapter - Servicios externos" {
 
   class DiscordAPI <<ExternalSystem>> {
     - webhookUrl: String
+    - logger: Consumer<String>
     + postToChannel(channelId: String, message: String): void
   }
 
   class SendGridAPI <<ExternalSystem>> {
     - apiKey: String
+    - logger: Consumer<String>
     + sendEmail(email: String, subject: String, body: String): void
   }
 
   class FirebaseAPI <<ExternalSystem>> {
     - projectId: String
+    - logger: Consumer<String>
     + sendPush(token: String, message: String): void
   }
 }
 
-ScrimContext "1" *-- "1" Scrim : usa
-ScrimContext "1" o-- "1" ScrimState : estado
+Main ..> EScrimsFrame : mostrarInterfaz()
+EScrimsFrame "1" o-- "1" DomainEventBus : configura
+EScrimsFrame ..> FirebaseAPI : callback mostrarAlertaFirebase
 
-BuscandoJugadoresState ..|> ScrimState : implementa
-LobbyArmadoState ..|> ScrimState : implementa
-ConfirmadoState ..|> ScrimState : implementa
-EnJuegoState ..|> ScrimState : implementa
-FinalizadoState ..|> ScrimState : implementa
-CanceladoState ..|> ScrimState : implementa
+ScrimContext "1" *-- "1" Scrim : usa
+ScrimContext "1" o-- "1" ScrimState : estado actual
+ScrimContext "1" o-- "1" DomainEventBus : publica eventos
+
+BuscandoJugadoresState ..|> ScrimState
+LobbyArmadoState ..|> ScrimState
+ConfirmadoState ..|> ScrimState
+EnJuegoState ..|> ScrimState
+FinalizadoState ..|> ScrimState
+CanceladoState ..|> ScrimState
 
 MatchmakingService "1" o-- "1" MatchmakingStrategy : usa
-ByMMRStrategy ..|> MatchmakingStrategy : implementa
-ByLatencyStrategy ..|> MatchmakingStrategy : implementa
-ByHistoryStrategy ..|> MatchmakingStrategy : implementa
+ByMMRStrategy ..|> MatchmakingStrategy
+ByLatencyStrategy ..|> MatchmakingStrategy
+ByHistoryStrategy ..|> MatchmakingStrategy
 
 DomainEventBus "1" o-- "0..*" Subscriber : registra
-NotificationSubscriber ..|> Subscriber : implementa
 DomainEventBus "1" ..> "0..*" DomainEvent : publica
+NotificationSubscriber ..|> Subscriber
+NotificationSubscriber "1" o-- "1" NotifierFactory : usa
 
 NotifierFactory "1" ..> "1" Notifier : crea
-ChannelNotifierFactory ..|> NotifierFactory : implementa
-EmailNotifier ..|> Notifier : implementa
-PushNotifier ..|> Notifier : implementa
-DiscordNotifier ..|> Notifier : implementa
+ChannelNotifierFactory ..|> NotifierFactory
+EmailNotifier ..|> Notifier
+PushNotifier ..|> Notifier
+DiscordNotifier ..|> Notifier
 
-DiscordAdapter ..|> ExternalNotificationProvider : adapta
-SendGridAdapter ..|> ExternalNotificationProvider : adapta
-FirebaseAdapter ..|> ExternalNotificationProvider : adapta
+DiscordAdapter ..|> ExternalNotificationProvider
+SendGridAdapter ..|> ExternalNotificationProvider
+FirebaseAdapter ..|> ExternalNotificationProvider
 DiscordAdapter "1" o-- "1" DiscordAPI : llama
 SendGridAdapter "1" o-- "1" SendGridAPI : llama
 FirebaseAdapter "1" o-- "1" FirebaseAPI : llama
 
-ScrimContext "1" o-- "1" DomainEventBus : emite
-DomainEventBus "1" --> "0..*" NotificationSubscriber : notifica
-NotificationSubscriber "1" o-- "1" NotifierFactory : usa
-
-ChannelNotifierFactory "1" ..> "0..*" EmailNotifier : EMAIL
-ChannelNotifierFactory "1" ..> "0..*" PushNotifier : PUSH
-ChannelNotifierFactory "1" ..> "0..*" DiscordNotifier : DISCORD
+ChannelNotifierFactory "1" ..> EmailNotifier : EMAIL
+ChannelNotifierFactory "1" ..> PushNotifier : PUSH
+ChannelNotifierFactory "1" ..> DiscordNotifier : DISCORD
 
 DiscordNotifier "1" o-- "1" DiscordAdapter : usa
 EmailNotifier "1" o-- "1" SendGridAdapter : usa
 PushNotifier "1" o-- "1" FirebaseAdapter : usa
 
+note right of EScrimsFrame
+  La API Firebase simulada recibe un Consumer<String>.
+  En Swing se le pasa mostrarAlertaFirebase(message),
+  por lo que el canal PUSH genera una alerta interna
+  con un mensaje visible mas humano.
+end note
+
 note right of ScrimContext
-  State permite controlar el ciclo de vida
-  del Scrim delegando cada accion en el
-  estado actual. Asi cada estado define
-  que operaciones permite y a que estado
-  puede avanzar.
-end note
-
-note bottom of MatchmakingService
-  Strategy permite cambiar el algoritmo de
-  matchmaking sin modificar el servicio.
-  El sistema puede seleccionar jugadores
-  por MMR, latencia o historial usando
-  distintas implementaciones.
-end note
-
-note left of DomainEventBus
-  Observer permite publicar eventos del
-  sistema sin acoplar al emisor con los
-  receptores. El bus recibe un evento y
-  lo distribuye a los suscriptores.
+  State controla el ciclo de vida del Scrim.
+  Al cambiar de estado publica un DomainEvent
+  con tipo, canal y payload.
 end note
 
 note bottom of NotificationSubscriber
-  Observer obtiene el canal del evento,
-  solicita un Notifier a la Factory
-  y ejecuta send(event).
-
-  Abstract Factory centraliza la creacion
-  del notificador adecuado segun el canal.
-  El subscriber no conoce clases concretas:
-  solo pide un Notifier y lo utiliza.
-end note
-
-note right of DiscordAdapter
-  Adapter permite integrar servicios externos
-  mediante una interfaz comun del sistema.
-  Cada adapter traduce las llamadas propias
-  de eScrims a la API concreta del proveedor.
+  Observer recibe eventos del bus.
+  Abstract Factory elige el Notifier por canal.
+  Adapter traduce la llamada a cada API concreta.
 end note
 
 @enduml

@@ -108,11 +108,11 @@ public class EScrimsFrame extends JFrame {
     private final DefaultListModel<Postulacion> postulacionesModel = new DefaultListModel<>();
     private final DefaultListModel<String> equiposModel = new DefaultListModel<>();
     private final DefaultListModel<String> postScrimModel = new DefaultListModel<>();
-    private final JPanel usersGrid = cardsGrid();
-    private final JPanel scrimsGrid = cardsGrid();
-    private final JPanel postulacionesGrid = cardsGrid();
-    private final JPanel equiposGrid = cardsGrid();
-    private final JPanel postScrimGrid = cardsGrid();
+    private final JPanel usersGrid = grillaTarjetas();
+    private final JPanel scrimsGrid = grillaTarjetas();
+    private final JPanel postulacionesGrid = grillaTarjetas();
+    private final JPanel equiposGrid = grillaTarjetas();
+    private final JPanel postScrimGrid = grillaTarjetas();
 
     private final JComboBox<Usuario> userPostCombo = new JComboBox<>();
     private final JComboBox<Usuario> feedbackUserCombo = new JComboBox<>();
@@ -130,14 +130,14 @@ public class EScrimsFrame extends JFrame {
 
     public EScrimsFrame() {
         super("eScrims - Plataforma de scrims");
-        applyGlobalTheme();
-        seedCatalogs();
-        seedInitialUsers();
-        configureEvents();
-        configureWindow();
+        aplicarTemaGlobal();
+        cargarCatalogosIniciales();
+        cargarUsuariosIniciales();
+        configurarEventos();
+        configurarVentana();
     }
 
-    private void configureWindow() {
+    private void configurarVentana() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1180, 780);
         setLocationRelativeTo(null);
@@ -147,26 +147,26 @@ public class EScrimsFrame extends JFrame {
         eventLog.setFont(MONO_FONT);
 
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Usuarios", buildUsersPanel());
-        tabs.addTab("Scrims", buildScrimsPanel());
-        tabs.addTab("Postulaciones", buildPostulacionesPanel());
-        tabs.addTab("Emparejamiento", buildMatchmakingPanel());
-        tabs.addTab("Posterior al scrim", buildPostScrimPanel());
-        styleTabbedPane(tabs);
+        tabs.addTab("Usuarios", construirPanelUsuarios());
+        tabs.addTab("Scrims", construirPanelScrims());
+        tabs.addTab("Postulaciones", construirPanelPostulaciones());
+        tabs.addTab("Emparejamiento", construirPanelEmparejamiento());
+        tabs.addTab("Posterior al scrim", construirPanelPosteriorScrim());
+        estilizarPestanias(tabs);
 
         JPanel logPanel = new JPanel(new BorderLayout());
         logPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(LINE), "EVENTOS | OBSERVADOR | FABRICA | ADAPTADORES", 0, 0, UI_FONT_BOLD, ACCENT_2));
         logPanel.setBackground(PANEL);
-        logPanel.add(darkScroll(eventLog), BorderLayout.CENTER);
+        logPanel.add(scrollOscuro(eventLog), BorderLayout.CENTER);
 
-        add(buildHeader(), BorderLayout.NORTH);
+        add(construirEncabezado(), BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
         add(logPanel, BorderLayout.SOUTH);
-        styleTree(this);
-        refreshAll();
+        estilizarArbol(this);
+        refrescarTodo();
     }
 
-    private JPanel buildHeader() {
+    private JPanel construirEncabezado() {
         JPanel header = new RoundedPanel(BG, BG, 0, 0);
         header.setLayout(new BorderLayout());
         header.setBorder(BorderFactory.createCompoundBorder(
@@ -207,79 +207,79 @@ public class EScrimsFrame extends JFrame {
         return header;
     }
 
-    private JPanel buildUsersPanel() {
+    private JPanel construirPanelUsuarios() {
         JButton crear = new JButton("Crear usuario");
-        crear.addActionListener(event -> showCreateUserDialog());
-        return boardPanel("Usuarios", "Gestion de jugadores registrados", crear, usersGrid);
+        crear.addActionListener(event -> mostrarDialogoCrearUsuario());
+        return panelTablero("Usuarios", "Gestion de jugadores registrados", crear, usersGrid);
     }
 
-    private JPanel buildScrimsPanel() {
+    private JPanel construirPanelScrims() {
         JButton crear = new JButton("Crear scrim");
-        crear.addActionListener(event -> showCreateScrimDialog());
-        return boardPanel("Scrims", "Cada scrim muestra la siguiente accion disponible en su ciclo de vida", crear, scrimsGrid);
+        crear.addActionListener(event -> mostrarDialogoCrearScrim());
+        return panelTablero("Scrims", "Cada scrim muestra la siguiente accion disponible en su ciclo de vida", crear, scrimsGrid);
     }
 
-    private JPanel buildPostulacionesPanel() {
+    private JPanel construirPanelPostulaciones() {
         JButton crear = new JButton("Crear postulacion");
-        crear.addActionListener(event -> showCreatePostulacionDialog());
-        return boardPanel("Postulaciones", "Solicitudes pendientes y resueltas", crear, postulacionesGrid);
+        crear.addActionListener(event -> mostrarDialogoCrearPostulacion());
+        return panelTablero("Postulaciones", "Solicitudes pendientes y resueltas", crear, postulacionesGrid);
     }
 
-    private JPanel buildMatchmakingPanel() {
+    private JPanel construirPanelEmparejamiento() {
         JComboBox<String> strategy = new JComboBox<>(new String[]{
                 "Equilibrar por MMR",
                 "Priorizar baja latencia",
                 "Priorizar historial"
         });
-        scrimMatchCombo.addActionListener(event -> refreshEquiposGrid());
+        scrimMatchCombo.addActionListener(event -> refrescarGrillaEquipos());
         JButton ejecutar = new JButton("Armar equipos automaticamente");
         ejecutar.addActionListener(event -> {
-            Scrim scrim = selected(scrimMatchCombo);
+            Scrim scrim = seleccionado(scrimMatchCombo);
             if (scrim.getPostulaciones().isEmpty()) {
-                showWarning("Ese scrim todavia no tiene postulaciones para armar equipos");
+                mostrarAdvertencia("Ese scrim todavia no tiene postulaciones para armar equipos");
                 return;
             }
-            MatchmakingService service = new MatchmakingService(strategyFor((String) strategy.getSelectedItem(), scrim));
+            MatchmakingService service = new MatchmakingService(estrategiaPara((String) strategy.getSelectedItem(), scrim));
             List<Postulacion> seleccionados = service.ejecutarMatchmaking(scrim);
-            log("Equipos armados con criterio '" + strategy.getSelectedItem() + "': " + seleccionados.size() + " jugadores asignados");
-            refreshAll();
+            registrarEvento("Equipos armados con criterio '" + strategy.getSelectedItem() + "': " + seleccionados.size() + " jugadores asignados");
+            refrescarTodo();
         });
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Scrim", scrimMatchCombo, "Selecciona el scrim sobre el que quieres armar los equipos.");
-        addWide(form, 1, sectionIntro("Que hace esta accion", "Toma las postulaciones del scrim seleccionado, arma sus equipos y actualiza sus cards en la pestaña Scrims."));
-        addRow(form, 2, "Criterio", strategy, "Define como se priorizan los jugadores al momento de armar los equipos.");
-        addWide(form, 3, strategyHelp());
-        addWide(form, 4, ejecutar);
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Scrim", scrimMatchCombo, "Selecciona el scrim sobre el que quieres armar los equipos.");
+        agregarFilaCompleta(form, 1, introduccionSeccion("Que hace esta accion", "Toma las postulaciones del scrim seleccionado, arma sus equipos y actualiza sus cards en la pestaña Scrims."));
+        agregarFila(form, 2, "Criterio", strategy, "Define como se priorizan los jugadores al momento de armar los equipos.");
+        agregarFilaCompleta(form, 3, ayudaEstrategia());
+        agregarFilaCompleta(form, 4, ejecutar);
 
-        return splitWithComponent(form, "Equipos", darkScroll(equiposGrid));
+        return dividirConComponente(form, "Equipos", scrollOscuro(equiposGrid));
     }
 
-    private JPanel buildPostScrimPanel() {
+    private JPanel construirPanelPosteriorScrim() {
         JButton comentario = new JButton("Dejar comentario");
-        comentario.addActionListener(event -> showComentarioDialog());
+        comentario.addActionListener(event -> mostrarDialogoComentario());
 
         JButton reporte = new JButton("Crear reporte");
-        reporte.addActionListener(event -> showReporteDialog());
+        reporte.addActionListener(event -> mostrarDialogoReporte());
 
-        JPanel actions = formPanel();
-        addRow(actions, 0, "Scrim", scrimPostActionsCombo, "Selecciona el scrim sobre el que quieres operar.");
-        addWide(actions, 1, sectionIntro("Comentarios", "Carga feedback posterior para evaluar la experiencia del scrim."));
-        addWide(actions, 2, comentario);
-        addWide(actions, 3, sectionIntro("Reportes", "Registra y resuelve conductas inadecuadas reportadas por jugadores."));
-        addWide(actions, 4, reporte);
+        JPanel actions = panelFormulario();
+        agregarFila(actions, 0, "Scrim", scrimPostActionsCombo, "Selecciona el scrim sobre el que quieres operar.");
+        agregarFilaCompleta(actions, 1, introduccionSeccion("Comentarios", "Carga feedback posterior para evaluar la experiencia del scrim."));
+        agregarFilaCompleta(actions, 2, comentario);
+        agregarFilaCompleta(actions, 3, introduccionSeccion("Reportes", "Registra y resuelve conductas inadecuadas reportadas por jugadores."));
+        agregarFilaCompleta(actions, 4, reporte);
 
-        return splitWithComponent(actions, "Actividad posterior al scrim", darkScroll(postScrimGrid));
+        return dividirConComponente(actions, "Actividad posterior al scrim", scrollOscuro(postScrimGrid));
     }
 
-    private void showEstadisticaDialog(Scrim preselectedScrim) {
+    private void mostrarDialogoEstadistica(Scrim preselectedScrim) {
         if (scrims.isEmpty() || usuarios.isEmpty()) {
-            showWarning("Necesitas al menos un scrim y un usuario para cargar estadisticas");
+            mostrarAdvertencia("Necesitas al menos un scrim y un usuario para cargar estadisticas");
             return;
         }
-        JComboBox<Scrim> scrim = comboFor(scrims);
+        JComboBox<Scrim> scrim = comboPara(scrims);
         scrim.setSelectedItem(preselectedScrim != null ? preselectedScrim : scrimPostActionsCombo.getSelectedItem());
-        JComboBox<Usuario> usuario = comboFor(usuarios);
+        JComboBox<Usuario> usuario = comboPara(usuarios);
         JSpinner kills = new JSpinner(new SpinnerNumberModel(10, 0, 100, 1));
         JSpinner deaths = new JSpinner(new SpinnerNumberModel(5, 0, 100, 1));
         JSpinner assists = new JSpinner(new SpinnerNumberModel(8, 0, 100, 1));
@@ -287,93 +287,93 @@ public class EScrimsFrame extends JFrame {
         JTextField resultado = new JTextField(12);
         JTextField observaciones = new JTextField(18);
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Scrim", scrim);
-        addRow(form, 1, "Jugador", usuario);
-        addRow(form, 2, "Bajas / Muertes / Asistencias", compact(kills, deaths, assists));
-        addRow(form, 3, "Jugador destacado", mvp);
-        addRow(form, 4, "Resultado", resultado, "Resultado individual o del equipo. Ejemplo: Victoria");
-        addRow(form, 5, "Observaciones", observaciones, "Detalle breve de la actuacion del jugador.");
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Scrim", scrim);
+        agregarFila(form, 1, "Jugador", usuario);
+        agregarFila(form, 2, "Bajas / Muertes / Asistencias", compacto(kills, deaths, assists));
+        agregarFila(form, 3, "Jugador destacado", mvp);
+        agregarFila(form, 4, "Resultado", resultado, "Resultado individual o del equipo. Ejemplo: Victoria");
+        agregarFila(form, 5, "Observaciones", observaciones, "Detalle breve de la actuacion del jugador.");
 
-        showFormDialog("Cargar estadistica", form, () -> {
-            if (!requireText(resultado, observaciones)) {
+        mostrarDialogoFormulario("Cargar estadistica", form, () -> {
+            if (!requerirTexto(resultado, observaciones)) {
                 return false;
             }
-            Estadistica stat = new Estadistica(nextId("stat"), selected(usuario), selected(scrim), (Integer) kills.getValue(),
+            Estadistica stat = new Estadistica(siguienteId("stat"), seleccionado(usuario), seleccionado(scrim), (Integer) kills.getValue(),
                     (Integer) deaths.getValue(), (Integer) assists.getValue(), "SI".equals(mvp.getSelectedItem()),
                     observaciones.getText(), resultado.getText());
-            selected(scrim).agregarEstadistica(stat);
-            log("Estadistica registrada: " + stat);
-            refreshAll();
+            seleccionado(scrim).agregarEstadistica(stat);
+            registrarEvento("Estadistica registrada: " + stat);
+            refrescarTodo();
             return true;
         });
     }
 
-    private void showComentarioDialog() {
+    private void mostrarDialogoComentario() {
         if (scrims.isEmpty() || usuarios.isEmpty()) {
-            showWarning("Necesitas al menos un scrim y un usuario para dejar un comentario");
+            mostrarAdvertencia("Necesitas al menos un scrim y un usuario para dejar un comentario");
             return;
         }
-        JComboBox<Scrim> scrim = comboFor(scrims);
+        JComboBox<Scrim> scrim = comboPara(scrims);
         scrim.setSelectedItem(scrimPostActionsCombo.getSelectedItem());
-        JComboBox<Usuario> usuario = comboFor(usuarios);
+        JComboBox<Usuario> usuario = comboPara(usuarios);
         JTextField comentario = new JTextField(24);
         JSpinner rating = new JSpinner(new SpinnerNumberModel(5, 1, 5, 1));
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Scrim", scrim);
-        addRow(form, 1, "Usuario", usuario);
-        addRow(form, 2, "Comentario", comentario, "Feedback posterior al scrim. Ejemplo: Buena comunicacion.");
-        addRow(form, 3, "Puntuacion", rating);
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Scrim", scrim);
+        agregarFila(form, 1, "Usuario", usuario);
+        agregarFila(form, 2, "Comentario", comentario, "Feedback posterior al scrim. Ejemplo: Buena comunicacion.");
+        agregarFila(form, 3, "Puntuacion", rating);
 
-        showFormDialog("Dejar comentario", form, () -> {
-            if (!requireText(comentario)) {
+        mostrarDialogoFormulario("Dejar comentario", form, () -> {
+            if (!requerirTexto(comentario)) {
                 return false;
             }
-            ComentarioFeedback item = new ComentarioFeedback(nextId("fb"), selected(usuario), selected(scrim), comentario.getText(), (Integer) rating.getValue());
+            ComentarioFeedback item = new ComentarioFeedback(siguienteId("fb"), seleccionado(usuario), seleccionado(scrim), comentario.getText(), (Integer) rating.getValue());
             item.aprobar();
-            selected(scrim).agregarFeedback(item);
-            log("Comentario registrado y aprobado");
-            refreshAll();
+            seleccionado(scrim).agregarFeedback(item);
+            registrarEvento("Comentario registrado y aprobado");
+            refrescarTodo();
             return true;
         });
     }
 
-    private void showReporteDialog() {
+    private void mostrarDialogoReporte() {
         if (scrims.isEmpty() || usuarios.size() < 2) {
-            showWarning("Necesitas al menos un scrim y dos usuarios para crear un reporte");
+            mostrarAdvertencia("Necesitas al menos un scrim y dos usuarios para crear un reporte");
             return;
         }
-        JComboBox<Scrim> scrim = comboFor(scrims);
+        JComboBox<Scrim> scrim = comboPara(scrims);
         scrim.setSelectedItem(scrimPostActionsCombo.getSelectedItem());
-        JComboBox<Usuario> reportante = comboFor(usuarios);
-        JComboBox<Usuario> reportado = comboFor(usuarios);
+        JComboBox<Usuario> reportante = comboPara(usuarios);
+        JComboBox<Usuario> reportado = comboPara(usuarios);
         JTextField motivo = new JTextField(24);
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Scrim", scrim);
-        addRow(form, 1, "Reportante", reportante);
-        addRow(form, 2, "Reportado", reportado);
-        addRow(form, 3, "Motivo", motivo, "Descripcion del comportamiento reportado.");
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Scrim", scrim);
+        agregarFila(form, 1, "Reportante", reportante);
+        agregarFila(form, 2, "Reportado", reportado);
+        agregarFila(form, 3, "Motivo", motivo, "Descripcion del comportamiento reportado.");
 
-        showFormDialog("Crear reporte", form, () -> {
-            if (!requireText(motivo)) {
+        mostrarDialogoFormulario("Crear reporte", form, () -> {
+            if (!requerirTexto(motivo)) {
                 return false;
             }
-            if (selected(reportante).equals(selected(reportado))) {
-                showWarning("El reportante y el reportado no pueden ser la misma persona");
+            if (seleccionado(reportante).equals(seleccionado(reportado))) {
+                mostrarAdvertencia("El reportante y el reportado no pueden ser la misma persona");
                 return false;
             }
-            ReporteConducta item = selected(reportante).reportarConducta(selected(reportado), selected(scrim), motivo.getText());
+            ReporteConducta item = seleccionado(reportante).reportarConducta(seleccionado(reportado), seleccionado(scrim), motivo.getText());
             item.procesar();
             item.resolver("Advertencia");
-            log("Reporte resuelto: " + item.obtenerReportante() + " -> " + item.obtenerReportado());
-            refreshAll();
+            registrarEvento("Reporte resuelto: " + item.obtenerReportante() + " -> " + item.obtenerReportado());
+            refrescarTodo();
             return true;
         });
     }
 
-    private void showCreateUserDialog() {
+    private void mostrarDialogoCrearUsuario() {
         JTextField username = new JTextField(18);
         JTextField email = new JTextField(22);
         JTextField password = new JTextField(18);
@@ -381,44 +381,44 @@ public class EScrimsFrame extends JFrame {
         JTextField rango = new JTextField(14);
         JSpinner mmr = new JSpinner(new SpinnerNumberModel(2300, 0, 10000, 50));
         JTextField roles = new JTextField(24);
-        JComboBox<Region> region = comboFor(regiones);
-        JComboBox<Juego> juego = comboFor(juegos);
+        JComboBox<Region> region = comboPara(regiones);
+        JComboBox<Juego> juego = comboPara(juegos);
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Nombre de usuario", username, "Alias publico del jugador. Ejemplo: santiMain");
-        addRow(form, 1, "Correo electronico", email, "Direccion de contacto. Ejemplo: jugador@correo.com");
-        addRow(form, 2, "Hash de contrasena", password, "Valor ya cifrado o identificador simulado para el TP.");
-        addRow(form, 3, "Disponibilidad", disponibilidad, "Dias y horarios disponibles. Ejemplo: Lun a Vie 20:00-23:00");
-        addRow(form, 4, "Region principal", region);
-        addRow(form, 5, "Juego", juego);
-        addRow(form, 6, "Rango", rango, "Rango competitivo en el juego seleccionado. Ejemplo: Diamante");
-        addRow(form, 7, "MMR", mmr);
-        addRow(form, 8, "Roles preferidos", roles, "Separar roles con coma. Ejemplo: Duelista, Controlador");
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Nombre de usuario", username, "Alias publico del jugador. Ejemplo: santiMain");
+        agregarFila(form, 1, "Correo electronico", email, "Direccion de contacto. Ejemplo: jugador@correo.com");
+        agregarFila(form, 2, "Hash de contrasena", password, "Valor ya cifrado o identificador simulado para el TP.");
+        agregarFila(form, 3, "Disponibilidad", disponibilidad, "Dias y horarios disponibles. Ejemplo: Lun a Vie 20:00-23:00");
+        agregarFila(form, 4, "Region principal", region);
+        agregarFila(form, 5, "Juego", juego);
+        agregarFila(form, 6, "Rango", rango, "Rango competitivo en el juego seleccionado. Ejemplo: Diamante");
+        agregarFila(form, 7, "MMR", mmr);
+        agregarFila(form, 8, "Roles preferidos", roles, "Separar roles con coma. Ejemplo: Duelista, Controlador");
 
-        showFormDialog("Crear usuario", form, () -> {
-            if (!requireText(username, email, password, disponibilidad, rango, roles)) {
+        mostrarDialogoFormulario("Crear usuario", form, () -> {
+            if (!requerirTexto(username, email, password, disponibilidad, rango, roles)) {
                 return false;
             }
-            Usuario usuario = new Usuario(nextId("usr"), username.getText(), email.getText(), password.getText());
+            Usuario usuario = new Usuario(siguienteId("usr"), username.getText(), email.getText(), password.getText());
             usuario.registrarse();
-            usuario.actualizarPerfil(username.getText(), email.getText(), disponibilidad.getText(), selected(region));
-            usuario.agregarPerfilJuego(new PerfilJuego(nextId("perfil"), selected(juego), rango.getText(), (Integer) mmr.getValue(), parseRoles(roles.getText())));
+            usuario.actualizarPerfil(username.getText(), email.getText(), disponibilidad.getText(), seleccionado(region));
+            usuario.agregarPerfilJuego(new PerfilJuego(siguienteId("perfil"), seleccionado(juego), rango.getText(), (Integer) mmr.getValue(), parsearRoles(roles.getText())));
             usuarios.add(usuario);
-            log("Usuario registrado: " + usuario + " | perfil " + selected(juego).getNombre() + " MMR " + mmr.getValue());
-            refreshAll();
+            registrarEvento("Usuario registrado: " + usuario + " | perfil " + seleccionado(juego).getNombre() + " MMR " + mmr.getValue());
+            refrescarTodo();
             return true;
         });
     }
 
-    private void showEditUserDialog(Usuario usuario) {
+    private void mostrarDialogoEditarUsuario(Usuario usuario) {
         JTextField username = new JTextField(usuario.getUsername(), 18);
         JTextField email = new JTextField(usuario.getEmail(), 22);
         JTextField disponibilidad = new JTextField(usuario.getDisponibilidadHoraria(), 24);
-        JComboBox<Region> region = comboFor(regiones);
+        JComboBox<Region> region = comboPara(regiones);
         region.setSelectedItem(usuario.getRegionPrincipal());
 
         PerfilJuego perfilActual = usuario.getPerfiles().isEmpty() ? null : usuario.getPerfiles().get(0);
-        JComboBox<Juego> juego = comboFor(juegos);
+        JComboBox<Juego> juego = comboPara(juegos);
         JTextField rango = new JTextField(14);
         JSpinner mmr = new JSpinner(new SpinnerNumberModel(2300, 0, 10000, 50));
         JTextField roles = new JTextField(24);
@@ -430,42 +430,42 @@ public class EScrimsFrame extends JFrame {
             roles.setText(String.join(", ", perfilActual.getRolesPreferidos()));
         }
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Nombre de usuario", username, "Alias publico del jugador. Ejemplo: santiMain");
-        addRow(form, 1, "Correo electronico", email, "Direccion de contacto. Ejemplo: jugador@correo.com");
-        addRow(form, 2, "Disponibilidad", disponibilidad, "Dias y horarios disponibles. Ejemplo: Lun a Vie 20:00-23:00");
-        addRow(form, 3, "Region principal", region);
-        addRow(form, 4, "Juego", juego);
-        addRow(form, 5, "Rango", rango, "Rango competitivo en el juego seleccionado. Ejemplo: Diamante");
-        addRow(form, 6, "MMR", mmr);
-        addRow(form, 7, "Roles preferidos", roles, "Separar roles con coma. Ejemplo: Duelista, Controlador");
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Nombre de usuario", username, "Alias publico del jugador. Ejemplo: santiMain");
+        agregarFila(form, 1, "Correo electronico", email, "Direccion de contacto. Ejemplo: jugador@correo.com");
+        agregarFila(form, 2, "Disponibilidad", disponibilidad, "Dias y horarios disponibles. Ejemplo: Lun a Vie 20:00-23:00");
+        agregarFila(form, 3, "Region principal", region);
+        agregarFila(form, 4, "Juego", juego);
+        agregarFila(form, 5, "Rango", rango, "Rango competitivo en el juego seleccionado. Ejemplo: Diamante");
+        agregarFila(form, 6, "MMR", mmr);
+        agregarFila(form, 7, "Roles preferidos", roles, "Separar roles con coma. Ejemplo: Duelista, Controlador");
 
-        showFormDialog("Editar usuario", form, () -> {
-            if (!requireText(username, email, disponibilidad, rango, roles)) {
+        mostrarDialogoFormulario("Editar usuario", form, () -> {
+            if (!requerirTexto(username, email, disponibilidad, rango, roles)) {
                 return false;
             }
-            usuario.actualizarPerfil(username.getText(), email.getText(), disponibilidad.getText(), selected(region));
+            usuario.actualizarPerfil(username.getText(), email.getText(), disponibilidad.getText(), seleccionado(region));
             PerfilJuego nuevoPerfil = new PerfilJuego(
-                    perfilActual != null ? perfilActual.getId() : nextId("perfil"),
-                    selected(juego),
+                    perfilActual != null ? perfilActual.getId() : siguienteId("perfil"),
+                    seleccionado(juego),
                     rango.getText(),
                     (Integer) mmr.getValue(),
-                    parseRoles(roles.getText())
+                    parsearRoles(roles.getText())
             );
             if (perfilActual == null) {
                 usuario.agregarPerfilJuego(nuevoPerfil);
             } else {
                 usuario.reemplazarPerfilJuego(perfilActual, nuevoPerfil);
             }
-            log("Usuario actualizado: " + usuario.getUsername());
-            refreshAll();
+            registrarEvento("Usuario actualizado: " + usuario.getUsername());
+            refrescarTodo();
             return true;
         });
     }
 
-    private void showCreateScrimDialog() {
-        JComboBox<Juego> juego = comboFor(juegos);
-        JComboBox<Region> region = comboFor(regiones);
+    private void mostrarDialogoCrearScrim() {
+        JComboBox<Juego> juego = comboPara(juegos);
+        JComboBox<Region> region = comboPara(regiones);
         JSpinner dias = new JSpinner(new SpinnerNumberModel(1, 0, 30, 1));
         JSpinner duracion = new JSpinner(new SpinnerNumberModel(60, 15, 240, 15));
         JTextField modalidad = new JTextField(18);
@@ -476,66 +476,66 @@ public class EScrimsFrame extends JFrame {
         JSpinner equipos = new JSpinner(new SpinnerNumberModel(2, 2, 8, 1));
         JSpinner jugadoresPorEquipo = new JSpinner(new SpinnerNumberModel(2, 1, 10, 1));
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Juego", juego);
-        addRow(form, 1, "Region", region);
-        addRow(form, 2, "Fecha en dias", dias);
-        addRow(form, 3, "Duracion", duracion);
-        addRow(form, 4, "Modalidad", modalidad, "Tipo de partida. Ejemplo: Competitiva, Practica, Torneo");
-        addRow(form, 5, "Formato", formato, "Cantidad y estructura de jugadores. Ejemplo: 5v5");
-        addRow(form, 6, "MMR minimo", mmrMin);
-        addRow(form, 7, "MMR maximo", mmrMax);
-        addRow(form, 8, "Latencia maxima", latencia);
-        addRow(form, 9, "Cantidad de equipos", equipos, "Define cuantos equipos tendra el scrim. Minimo: 2");
-        addRow(form, 10, "Jugadores por equipo", jugadoresPorEquipo, "La cantidad total de jugadores se calcula automaticamente.");
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Juego", juego);
+        agregarFila(form, 1, "Region", region);
+        agregarFila(form, 2, "Fecha en dias", dias);
+        agregarFila(form, 3, "Duracion", duracion);
+        agregarFila(form, 4, "Modalidad", modalidad, "Tipo de partida. Ejemplo: Competitiva, Practica, Torneo");
+        agregarFila(form, 5, "Formato", formato, "Cantidad y estructura de jugadores. Ejemplo: 5v5");
+        agregarFila(form, 6, "MMR minimo", mmrMin);
+        agregarFila(form, 7, "MMR maximo", mmrMax);
+        agregarFila(form, 8, "Latencia maxima", latencia);
+        agregarFila(form, 9, "Cantidad de equipos", equipos, "Define cuantos equipos tendra el scrim. Minimo: 2");
+        agregarFila(form, 10, "Jugadores por equipo", jugadoresPorEquipo, "La cantidad total de jugadores se calcula automaticamente.");
 
-        showFormDialog("Crear scrim", form, () -> {
-            if (!requireText(modalidad, formato)) {
+        mostrarDialogoFormulario("Crear scrim", form, () -> {
+            if (!requerirTexto(modalidad, formato)) {
                 return false;
             }
-            Scrim scrim = new Scrim(nextId("scrim"), selected(juego), selected(region),
+            Scrim scrim = new Scrim(siguienteId("scrim"), seleccionado(juego), seleccionado(region),
                     LocalDateTime.now().plusDays((Integer) dias.getValue()), (Integer) duracion.getValue(),
                     modalidad.getText(), formato.getText(), (Integer) mmrMin.getValue(), (Integer) mmrMax.getValue(),
                     (Integer) latencia.getValue(), (Integer) equipos.getValue(), (Integer) jugadoresPorEquipo.getValue());
             scrims.add(scrim);
             contexts.put(scrim, new ScrimContext(scrim, eventBus));
-            log("Scrim creado: " + scrim + " | estado " + scrim.getEstadoActual() + " | equipos=" + scrim.getCantidadEquipos() + " | jugadores=" + scrim.getCantidadJugadores());
-            refreshAll();
+            registrarEvento("Scrim creado: " + scrim + " | estado " + scrim.getEstadoActual() + " | equipos=" + scrim.getCantidadEquipos() + " | jugadores=" + scrim.getCantidadJugadores());
+            refrescarTodo();
             return true;
         });
     }
 
-    private void showCreatePostulacionDialog() {
+    private void mostrarDialogoCrearPostulacion() {
         if (usuarios.isEmpty() || scrims.isEmpty()) {
-            showWarning("Necesitas al menos un usuario y un scrim para crear una postulacion");
+            mostrarAdvertencia("Necesitas al menos un usuario y un scrim para crear una postulacion");
             return;
         }
-        JComboBox<Usuario> usuario = comboFor(usuarios);
-        JComboBox<Scrim> scrim = comboFor(scrims);
+        JComboBox<Usuario> usuario = comboPara(usuarios);
+        JComboBox<Scrim> scrim = comboPara(scrims);
         JTextField rol = new JTextField(18);
 
-        JPanel form = formPanel();
-        addRow(form, 0, "Usuario", usuario);
-        addRow(form, 1, "Scrim", scrim);
-        addRow(form, 2, "Rol deseado", rol, "Rol que quiere ocupar el jugador. Ejemplo: Soporte");
+        JPanel form = panelFormulario();
+        agregarFila(form, 0, "Usuario", usuario);
+        agregarFila(form, 1, "Scrim", scrim);
+        agregarFila(form, 2, "Rol deseado", rol, "Rol que quiere ocupar el jugador. Ejemplo: Soporte");
 
-        showFormDialog("Crear postulacion", form, () -> {
-            if (!requireText(rol)) {
+        mostrarDialogoFormulario("Crear postulacion", form, () -> {
+            if (!requerirTexto(rol)) {
                 return false;
             }
             try {
-                Postulacion postulacion = selected(usuario).postularse(selected(scrim), rol.getText());
-                log("Postulacion creada: " + postulacion);
-                refreshAll();
+                Postulacion postulacion = seleccionado(usuario).postularse(seleccionado(scrim), rol.getText());
+                registrarEvento("Postulacion creada: " + postulacion);
+                refrescarTodo();
                 return true;
             } catch (RuntimeException ex) {
-                showWarning(ex.getMessage());
+                mostrarAdvertencia(ex.getMessage());
                 return false;
             }
         });
     }
 
-    private void showFormDialog(String title, JPanel form, DialogAction action) {
+    private void mostrarDialogoFormulario(String title, JPanel form, AccionDialogo action) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.getContentPane().setBackground(BG);
@@ -548,7 +548,7 @@ public class EScrimsFrame extends JFrame {
         JButton create = new JButton(title);
         JButton cancel = new JButton("Cancelar");
         create.addActionListener(event -> {
-            if (action.run()) {
+            if (action.ejecutar()) {
                 dialog.dispose();
             }
         });
@@ -562,14 +562,14 @@ public class EScrimsFrame extends JFrame {
         dialog.add(heading, BorderLayout.NORTH);
         dialog.add(form, BorderLayout.CENTER);
         dialog.add(actions, BorderLayout.SOUTH);
-        styleTree(dialog);
+        estilizarArbol(dialog);
         dialog.pack();
         dialog.setMinimumSize(new Dimension(460, dialog.getHeight()));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
-    private JPanel boardPanel(String title, String subtitle, JButton action, JPanel grid) {
+    private JPanel panelTablero(String title, String subtitle, JButton action, JPanel grid) {
         JPanel panel = new JPanel(new BorderLayout(0, 12));
         panel.setBackground(BG);
         panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -597,35 +597,35 @@ public class EScrimsFrame extends JFrame {
         top.add(action, BorderLayout.EAST);
 
         panel.add(top, BorderLayout.NORTH);
-        panel.add(darkScroll(grid), BorderLayout.CENTER);
+        panel.add(scrollOscuro(grid), BorderLayout.CENTER);
         return panel;
     }
 
-    private static JPanel cardsGrid() {
+    private static JPanel grillaTarjetas() {
         JPanel grid = new JPanel(new WrapLayout(FlowLayout.LEFT, 14, 14));
         grid.setBackground(BG);
         grid.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         return grid;
     }
 
-    private JPanel card(String title, String detail, String meta) {
-        return card(title, detail, meta, ACCENT_2);
+    private JPanel tarjeta(String title, String detail, String meta) {
+        return tarjeta(title, detail, meta, ACCENT_2);
     }
 
-    private JPanel card(String title, String detail, String meta, Color metaColor) {
-        return card(title, detail, meta, metaColor, CARD_SIZE);
+    private JPanel tarjeta(String title, String detail, String meta, Color metaColor) {
+        return tarjeta(title, detail, meta, metaColor, CARD_SIZE);
     }
 
-    private JPanel card(String title, String detail, String meta, Color metaColor, Dimension size) {
-        JPanel card = new RoundedPanel(PANEL, new Color(62, 73, 96), 18, 1);
-        card.setLayout(new BorderLayout(0, 8));
-        card.setBorder(BorderFactory.createCompoundBorder(
+    private JPanel tarjeta(String title, String detail, String meta, Color metaColor, Dimension size) {
+        JPanel tarjeta = new RoundedPanel(PANEL, new Color(62, 73, 96), 18, 1);
+        tarjeta.setLayout(new BorderLayout(0, 8));
+        tarjeta.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedBorder(new Color(62, 73, 96), 18, 1),
                 BorderFactory.createEmptyBorder(16, 16, 16, 16)
         ));
-        card.setPreferredSize(size);
-        card.setMinimumSize(size);
-        card.setMaximumSize(size);
+        tarjeta.setPreferredSize(size);
+        tarjeta.setMinimumSize(size);
+        tarjeta.setMaximumSize(size);
 
         JLabel titleLabel = new JLabel(title);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 15));
@@ -650,11 +650,11 @@ public class EScrimsFrame extends JFrame {
         content.add(detailLabel);
         content.add(Box.createVerticalStrut(12));
         content.add(metaLabel);
-        card.add(content, BorderLayout.CENTER);
-        return card;
+        tarjeta.add(content, BorderLayout.CENTER);
+        return tarjeta;
     }
 
-    private Dimension scrimCardSize(Scrim scrim) {
+    private Dimension tamanioTarjetaScrim(Scrim scrim) {
         int teamLines = Math.max(scrim.getCantidadEquipos(), 1);
         int playerLines = scrim.getEquipos().stream()
                 .mapToInt(equipo -> Math.max(equipo.getParticipaciones().size(), 1))
@@ -663,7 +663,7 @@ public class EScrimsFrame extends JFrame {
         return new Dimension(CARD_SIZE.width, Math.max(CARD_SIZE.height, height));
     }
 
-    private String userCardDetail(Usuario usuario) {
+    private String detalleTarjetaUsuario(Usuario usuario) {
         StringBuilder detail = new StringBuilder();
         detail.append(usuario.getEmail());
         detail.append("<br>Disponibilidad: ").append(usuario.getDisponibilidadHoraria());
@@ -673,7 +673,7 @@ public class EScrimsFrame extends JFrame {
         return detail.toString();
     }
 
-    private String userCardMeta(Usuario usuario) {
+    private String metaTarjetaUsuario(Usuario usuario) {
         if (usuario.getPerfiles().isEmpty()) {
             return "Sin perfil de juego configurado";
         }
@@ -681,7 +681,7 @@ public class EScrimsFrame extends JFrame {
         return perfil.getJuego().getNombre() + " | " + perfil.getRango() + " | MMR " + perfil.getMmr();
     }
 
-    private String scrimCardDetail(Scrim scrim) {
+    private String detalleTarjetaScrim(Scrim scrim) {
         return "Estado: " + scrim.getEstadoActual()
                 + "<br>Equipos: " + scrim.getCantidadEquipos()
                 + " | Jugadores por equipo: " + scrim.getJugadoresPorEquipo()
@@ -689,7 +689,7 @@ public class EScrimsFrame extends JFrame {
                 + " | Postulaciones: " + scrim.getPostulaciones().size();
     }
 
-    private String scrimTeamsMeta(Scrim scrim) {
+    private String metaEquiposScrim(Scrim scrim) {
         StringBuilder meta = new StringBuilder();
         int numeroEquipo = 1;
         for (Equipo equipo : scrim.getEquipos()) {
@@ -720,27 +720,38 @@ public class EScrimsFrame extends JFrame {
         return meta.toString();
     }
 
-    private <T> JComboBox<T> comboFor(List<T> values) {
+    private <T> JComboBox<T> comboPara(List<T> values) {
         JComboBox<T> combo = new JComboBox<>();
-        setModel(combo, values);
-        styleCombo(combo);
+        asignarModelo(combo, values);
+        estilizarCombo(combo);
         return combo;
     }
 
-    private interface DialogAction {
-        boolean run();
+    private interface AccionDialogo {
+        boolean ejecutar();
     }
 
-    private void configureEvents() {
-        SendGridAdapter sendGrid = new SendGridAdapter(new SendGridAPI("sendgrid-key", this::log));
-        FirebaseAdapter firebase = new FirebaseAdapter(new FirebaseAPI("escrims-app", this::log));
-        DiscordAdapter discord = new DiscordAdapter(new DiscordAPI("https://discord.local/webhook", this::log));
+    private void configurarEventos() {
+        SendGridAdapter sendGrid = new SendGridAdapter(new SendGridAPI("sendgrid-key", this::registrarEvento));
+        FirebaseAdapter firebase = new FirebaseAdapter(new FirebaseAPI("escrims-app", this::mostrarAlertaFirebase));
+        DiscordAdapter discord = new DiscordAdapter(new DiscordAPI("https://discord.local/webhook", this::registrarEvento));
         ChannelNotifierFactory factory = new ChannelNotifierFactory(sendGrid, firebase, discord);
         eventBus = new DomainEventBus();
         eventBus.subscribe(new NotificationSubscriber(factory));
     }
 
-    private void seedCatalogs() {
+    private void mostrarAlertaFirebase(String message) {
+        registrarEvento(message);
+        String mensajeVisible = message.contains(": ") ? message.substring(message.indexOf(": ") + 2) : message;
+        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+                this,
+                mensajeVisible,
+                "Notificacion interna Firebase",
+                JOptionPane.INFORMATION_MESSAGE
+        ));
+    }
+
+    private void cargarCatalogosIniciales() {
         juegos.add(new Juego("game-valorant", "Valorant", "FPS tactico"));
         juegos.add(new Juego("game-lol", "League of Legends", "MOBA competitivo"));
         juegos.add(new Juego("game-cs2", "CS2", "FPS competitivo"));
@@ -749,7 +760,7 @@ public class EScrimsFrame extends JFrame {
         regiones.add(new Region("reg-br", "BR", "Sao Paulo"));
     }
 
-    private void seedInitialUsers() {
+    private void cargarUsuariosIniciales() {
         if (!usuarios.isEmpty()) {
             return;
         }
@@ -763,59 +774,59 @@ public class EScrimsFrame extends JFrame {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No se encontro la region LAS en el catalogo"));
 
-        usuarios.add(createSeedUser("Santi Herrera", "santi.herrera@escrims.gg", "hash-santi", "Lun a Dom 19:00-01:00", las, cs2, "Global Elite", 2600, List.of("Rifler", "IGL")));
-        usuarios.add(createSeedUser("Seba Tomas", "seba.tomas@escrims.gg", "hash-seba", "Lun a Vie 20:00-00:00", las, cs2, "Supreme", 2300, List.of("Entry", "AWPer")));
-        usuarios.add(createSeedUser("Santi Albui", "santi.albui@escrims.gg", "hash-albui", "Mar a Dom 18:00-23:30", las, cs2, "Global Elite", 2600, List.of("Rifler", "Lurker")));
-        usuarios.add(createSeedUser("Agus Mollo", "agus.mollo@escrims.gg", "hash-agus", "Lun a Sab 21:00-01:00", las, cs2, "Supreme", 2300, List.of("Support", "Anchor")));
-        usuarios.add(createSeedUser("Nacho", "nacho@escrims.gg", "hash-nacho", "Lun a Vie 19:00-23:00", las, cs2, "Legendary Eagle", 2400, List.of("Entry", "Support")));
-        usuarios.add(createSeedUser("Tizi", "tizi@escrims.gg", "hash-tizi", "Mar a Dom 20:00-00:30", las, cs2, "Legendary Eagle Master", 2450, List.of("AWPer", "Lurker")));
-        usuarios.add(createSeedUser("Nico", "nico@escrims.gg", "hash-nico", "Lun a Dom 18:00-22:30", las, cs2, "Supreme", 2350, List.of("IGL", "Anchor")));
+        usuarios.add(crearUsuarioInicial("Santi Herrera", "santi.herrera@escrims.gg", "hash-santi", "Lun a Dom 19:00-01:00", las, cs2, "Global Elite", 2600, List.of("Rifler", "IGL")));
+        usuarios.add(crearUsuarioInicial("Seba Tomas", "seba.tomas@escrims.gg", "hash-seba", "Lun a Vie 20:00-00:00", las, cs2, "Supreme", 2300, List.of("Entry", "AWPer")));
+        usuarios.add(crearUsuarioInicial("Santi Albui", "santi.albui@escrims.gg", "hash-albui", "Mar a Dom 18:00-23:30", las, cs2, "Global Elite", 2600, List.of("Rifler", "Lurker")));
+        usuarios.add(crearUsuarioInicial("Agus Mollo", "agus.mollo@escrims.gg", "hash-agus", "Lun a Sab 21:00-01:00", las, cs2, "Supreme", 2300, List.of("Support", "Anchor")));
+        usuarios.add(crearUsuarioInicial("Nacho", "nacho@escrims.gg", "hash-nacho", "Lun a Vie 19:00-23:00", las, cs2, "Legendary Eagle", 2400, List.of("Entry", "Support")));
+        usuarios.add(crearUsuarioInicial("Tizi", "tizi@escrims.gg", "hash-tizi", "Mar a Dom 20:00-00:30", las, cs2, "Legendary Eagle Master", 2450, List.of("AWPer", "Lurker")));
+        usuarios.add(crearUsuarioInicial("Nico", "nico@escrims.gg", "hash-nico", "Lun a Dom 18:00-22:30", las, cs2, "Supreme", 2350, List.of("IGL", "Anchor")));
     }
 
-    private Usuario createSeedUser(String username, String email, String passwordHash, String disponibilidad,
+    private Usuario crearUsuarioInicial(String username, String email, String passwordHash, String disponibilidad,
                                    Region region, Juego juego, String rango, int mmr, List<String> roles) {
-        Usuario usuario = new Usuario(nextId("usr"), username, email, passwordHash);
+        Usuario usuario = new Usuario(siguienteId("usr"), username, email, passwordHash);
         usuario.registrarse();
         usuario.actualizarPerfil(username, email, disponibilidad, region);
-        usuario.agregarPerfilJuego(new PerfilJuego(nextId("perfil"), juego, rango, mmr, roles));
+        usuario.agregarPerfilJuego(new PerfilJuego(siguienteId("perfil"), juego, rango, mmr, roles));
         return usuario;
     }
 
-    private void refreshAll() {
-        refreshCombos();
-        refreshLists();
+    private void refrescarTodo() {
+        refrescarCombos();
+        refrescarListas();
     }
 
-    private void refreshCombos() {
-        setModel(juegoUserCombo, juegos);
-        setModel(juegoScrimCombo, juegos);
-        setModel(regionUserCombo, regiones);
-        setModel(regionScrimCombo, regiones);
-        setModel(userPostCombo, usuarios);
-        setModel(feedbackUserCombo, usuarios);
-        setModel(reportanteCombo, usuarios);
-        setModel(reportadoCombo, usuarios);
-        setModel(scrimPostCombo, scrims);
-        setModel(scrimMatchCombo, scrims);
-        setModel(scrimPostActionsCombo, scrims);
+    private void refrescarCombos() {
+        asignarModelo(juegoUserCombo, juegos);
+        asignarModelo(juegoScrimCombo, juegos);
+        asignarModelo(regionUserCombo, regiones);
+        asignarModelo(regionScrimCombo, regiones);
+        asignarModelo(userPostCombo, usuarios);
+        asignarModelo(feedbackUserCombo, usuarios);
+        asignarModelo(reportanteCombo, usuarios);
+        asignarModelo(reportadoCombo, usuarios);
+        asignarModelo(scrimPostCombo, scrims);
+        asignarModelo(scrimMatchCombo, scrims);
+        asignarModelo(scrimPostActionsCombo, scrims);
     }
 
-    private void refreshLists() {
+    private void refrescarListas() {
         usersModel.clear();
         usersGrid.removeAll();
         for (Usuario usuario : usuarios) {
             usersModel.addElement(usuario.getUsername() + " | " + usuario.getEmail() + " | " + usuario.getDisponibilidadHoraria());
-            JPanel userCard = card(
+            JPanel userCard = tarjeta(
                     usuario.getUsername(),
-                    "<html><body style='width:300px'>" + userCardDetail(usuario) + "</body></html>",
-                    userCardMeta(usuario)
+                    "<html><body style='width:300px'>" + detalleTarjetaUsuario(usuario) + "</body></html>",
+                    metaTarjetaUsuario(usuario)
             );
             userCard.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             userCard.setToolTipText("Haz click para editar este usuario");
             userCard.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent event) {
-                    showEditUserDialog(usuario);
+                    mostrarDialogoEditarUsuario(usuario);
                 }
             });
             usersGrid.add(userCard);
@@ -824,19 +835,19 @@ public class EScrimsFrame extends JFrame {
         scrimsGrid.removeAll();
         for (Scrim scrim : scrims) {
             scrimsModel.addElement(scrim + " | estado=" + scrim.getEstadoActual() + " | postulaciones=" + scrim.getPostulaciones().size());
-            JPanel scrimCard = card(
+            JPanel scrimCard = tarjeta(
                     scrim.toString(),
-                    "<html><body style='width:300px'>" + scrimCardDetail(scrim) + "</body></html>",
-                    "<html><body style='width:300px'>" + scrimTeamsMeta(scrim) + "</body></html>",
+                    "<html><body style='width:300px'>" + detalleTarjetaScrim(scrim) + "</body></html>",
+                    "<html><body style='width:300px'>" + metaEquiposScrim(scrim) + "</body></html>",
                     colorEstadoScrim(scrim.getEstadoActual()),
-                    scrimCardSize(scrim)
+                    tamanioTarjetaScrim(scrim)
             );
-            String nextActionLabel = nextActionLabel(scrim);
-            if (nextActionLabel != null) {
+            String etiquetaSiguienteAccion = etiquetaSiguienteAccion(scrim);
+            if (etiquetaSiguienteAccion != null) {
                 JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
                 actions.setOpaque(false);
-                JButton avanzar = new JButton(nextActionLabel);
-                avanzar.putClientProperty("compact", Boolean.TRUE);
+                JButton avanzar = new JButton(etiquetaSiguienteAccion);
+                avanzar.putClientProperty("compacto", Boolean.TRUE);
                 avanzar.addActionListener(event -> avanzarEstadoScrim(scrim));
                 actions.add(avanzar);
                 scrimCard.add(actions, BorderLayout.SOUTH);
@@ -845,16 +856,16 @@ public class EScrimsFrame extends JFrame {
                 actions.setOpaque(false);
                 JButton estadistica = new JButton("Cargar estadistica");
                 JButton verEstadisticas = new JButton("Ver estadisticas");
-                estadistica.putClientProperty("compact", Boolean.TRUE);
-                verEstadisticas.putClientProperty("compact", Boolean.TRUE);
-                estadistica.addActionListener(event -> showEstadisticaDialog(scrim));
-                verEstadisticas.addActionListener(event -> showEstadisticasViewer(scrim));
+                estadistica.putClientProperty("compacto", Boolean.TRUE);
+                verEstadisticas.putClientProperty("compacto", Boolean.TRUE);
+                estadistica.addActionListener(event -> mostrarDialogoEstadistica(scrim));
+                verEstadisticas.addActionListener(event -> mostrarVisorEstadisticas(scrim));
                 actions.add(estadistica);
                 actions.add(verEstadisticas);
                 scrimCard.add(actions, BorderLayout.SOUTH);
             }
             scrimCard.setToolTipText("Estado actual: " + scrim.getEstadoActual());
-            styleTree(scrimCard);
+            estilizarArbol(scrimCard);
             scrimsGrid.add(scrimCard);
         }
         postulacionesModel.clear();
@@ -867,7 +878,7 @@ public class EScrimsFrame extends JFrame {
                 if ("ACEPTADA".equalsIgnoreCase(estado) && postulacion.getScrim().usuarioYaConfirmo(postulacion.getUsuario())) {
                     estadoVisible = "ACEPTADA | ASISTENCIA CONFIRMADA";
                 }
-                JPanel card = card(
+                JPanel tarjeta = tarjeta(
                         postulacion.getUsuario().getUsername(),
                         postulacion.getRolDeseado() + " | " + scrim,
                         estadoVisible,
@@ -878,27 +889,27 @@ public class EScrimsFrame extends JFrame {
                     actions.setOpaque(false);
                     JButton aceptar = new JButton("Aceptar");
                     JButton rechazar = new JButton("Rechazar");
-                    aceptar.putClientProperty("compact", Boolean.TRUE);
-                    rechazar.putClientProperty("compact", Boolean.TRUE);
-                    aceptar.addActionListener(event -> changePostulacion(postulacion, true));
-                    rechazar.addActionListener(event -> changePostulacion(postulacion, false));
+                    aceptar.putClientProperty("compacto", Boolean.TRUE);
+                    rechazar.putClientProperty("compacto", Boolean.TRUE);
+                    aceptar.addActionListener(event -> cambiarPostulacion(postulacion, true));
+                    rechazar.addActionListener(event -> cambiarPostulacion(postulacion, false));
                     actions.add(rechazar);
                     actions.add(aceptar);
-                    card.add(actions, BorderLayout.SOUTH);
+                    tarjeta.add(actions, BorderLayout.SOUTH);
                 } else if ("ACEPTADA".equalsIgnoreCase(estado) && !postulacion.getScrim().usuarioYaConfirmo(postulacion.getUsuario())) {
                     JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
                     actions.setOpaque(false);
                     JButton confirmarAsistencia = new JButton("Confirmar asistencia");
-                    confirmarAsistencia.putClientProperty("compact", Boolean.TRUE);
-                    confirmarAsistencia.addActionListener(event -> confirmPostulacion(postulacion));
+                    confirmarAsistencia.putClientProperty("compacto", Boolean.TRUE);
+                    confirmarAsistencia.addActionListener(event -> confirmarPostulacion(postulacion));
                     actions.add(confirmarAsistencia);
-                    card.add(actions, BorderLayout.SOUTH);
+                    tarjeta.add(actions, BorderLayout.SOUTH);
                 }
-                styleTree(card);
-                postulacionesGrid.add(card);
+                estilizarArbol(tarjeta);
+                postulacionesGrid.add(tarjeta);
             }
         }
-        refreshEquiposGrid();
+        refrescarGrillaEquipos();
         postScrimModel.clear();
         postScrimGrid.removeAll();
         for (Scrim scrim : scrims) {
@@ -906,7 +917,7 @@ public class EScrimsFrame extends JFrame {
                     + " | estadisticas=" + scrim.getEstadisticas().size()
                     + " | comentarios=" + scrim.getFeedback().size()
                     + " | reportes=" + scrim.getReportes().size());
-            postScrimGrid.add(card(scrim.toString(), "Confirmaciones: " + scrim.getConfirmaciones().size() + " | Estadisticas: " + scrim.getEstadisticas().size(),
+            postScrimGrid.add(tarjeta(scrim.toString(), "Confirmaciones: " + scrim.getConfirmaciones().size() + " | Estadisticas: " + scrim.getEstadisticas().size(),
                     "Comentarios: " + scrim.getFeedback().size() + " | Reportes: " + scrim.getReportes().size()));
         }
         usersGrid.revalidate();
@@ -921,7 +932,7 @@ public class EScrimsFrame extends JFrame {
         postScrimGrid.repaint();
     }
 
-    private void refreshEquiposGrid() {
+    private void refrescarGrillaEquipos() {
         equiposModel.clear();
         equiposGrid.removeAll();
         Scrim scrimSeleccionado = (Scrim) scrimMatchCombo.getSelectedItem();
@@ -934,7 +945,7 @@ public class EScrimsFrame extends JFrame {
         equiposModel.addElement(scrimSeleccionado + " | " + scrimSeleccionado.getEstadoActual());
         for (Equipo equipo : scrimSeleccionado.getEquipos()) {
             equiposModel.addElement("  " + equipo);
-            JPanel equipoCard = card(
+            JPanel equipoCard = tarjeta(
                     equipo.getLado(),
                     scrimSeleccionado.toString(),
                     "Jugadores en este equipo: " + equipo.getParticipaciones().size() + "/" + scrimSeleccionado.getJugadoresPorEquipo()
@@ -948,7 +959,7 @@ public class EScrimsFrame extends JFrame {
         equiposGrid.repaint();
     }
 
-    private void showEstadisticasViewer(Scrim scrim) {
+    private void mostrarVisorEstadisticas(Scrim scrim) {
         JDialog dialog = new JDialog(this, "Estadisticas del scrim", true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.getContentPane().setBackground(BG);
@@ -964,14 +975,14 @@ public class EScrimsFrame extends JFrame {
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(BorderFactory.createEmptyBorder(0, 16, 16, 16));
 
-        content.add(buildStatsSummaryCard(scrim));
+        content.add(construirTarjetaResumenEstadisticas(scrim));
         content.add(Box.createVerticalStrut(12));
 
         if (scrim.getEstadisticas().isEmpty()) {
-            content.add(emptyStateCard("Todavia no hay estadisticas cargadas para este scrim."));
+            content.add(tarjetaEstadoVacio("Todavia no hay estadisticas cargadas para este scrim."));
         } else {
             for (Equipo equipo : scrim.getEquipos()) {
-                content.add(buildTeamStatsSection(scrim, equipo));
+                content.add(construirSeccionEstadisticasEquipo(scrim, equipo));
                 content.add(Box.createVerticalStrut(12));
             }
         }
@@ -984,16 +995,16 @@ public class EScrimsFrame extends JFrame {
         actions.add(close);
 
         dialog.add(heading, BorderLayout.NORTH);
-        dialog.add(darkScroll(content), BorderLayout.CENTER);
+        dialog.add(scrollOscuro(content), BorderLayout.CENTER);
         dialog.add(actions, BorderLayout.SOUTH);
-        styleTree(dialog);
+        estilizarArbol(dialog);
         dialog.setSize(960, 720);
         dialog.setMinimumSize(new Dimension(860, 620));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
-    private JPanel buildStatsSummaryCard(Scrim scrim) {
+    private JPanel construirTarjetaResumenEstadisticas(Scrim scrim) {
         JPanel summary = new RoundedPanel(PANEL_ALT, new Color(62, 73, 96), 20, 1);
         summary.setLayout(new BoxLayout(summary, BoxLayout.Y_AXIS));
         summary.setBorder(BorderFactory.createCompoundBorder(
@@ -1025,7 +1036,7 @@ public class EScrimsFrame extends JFrame {
         return summary;
     }
 
-    private JPanel buildTeamStatsSection(Scrim scrim, Equipo equipo) {
+    private JPanel construirSeccionEstadisticasEquipo(Scrim scrim, Equipo equipo) {
         JPanel section = new RoundedPanel(PANEL, new Color(58, 70, 95), 20, 1);
         section.setLayout(new BorderLayout(0, 12));
         section.setBorder(BorderFactory.createCompoundBorder(
@@ -1049,14 +1060,14 @@ public class EScrimsFrame extends JFrame {
         heading.add(Box.createVerticalStrut(4));
         heading.add(subtitle);
 
-        JPanel grid = cardsGrid();
+        JPanel grid = grillaTarjetas();
         grid.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         if (equipo.getParticipaciones().isEmpty()) {
-            grid.add(emptyStateCard("Este equipo todavia no tiene integrantes asignados."));
+            grid.add(tarjetaEstadoVacio("Este equipo todavia no tiene integrantes asignados."));
         } else {
             for (Participacion participacion : equipo.getParticipaciones()) {
-                grid.add(buildPlayerStatCard(scrim, participacion));
+                grid.add(construirTarjetaEstadisticaJugador(scrim, participacion));
             }
         }
 
@@ -1065,8 +1076,8 @@ public class EScrimsFrame extends JFrame {
         return section;
     }
 
-    private JPanel buildPlayerStatCard(Scrim scrim, Participacion participacion) {
-        Estadistica estadistica = findStat(scrim, participacion.getUsuario());
+    private JPanel construirTarjetaEstadisticaJugador(Scrim scrim, Participacion participacion) {
+        Estadistica estadistica = buscarEstadistica(scrim, participacion.getUsuario());
         PerfilJuego perfil = participacion.getUsuario().perfilPara(scrim.getJuego());
         String detail = "<html><body style='width:280px'>"
                 + "<span style='font-size:13px'><b>" + participacion.getUsuario().getUsername() + "</b></span>"
@@ -1091,14 +1102,14 @@ public class EScrimsFrame extends JFrame {
             metaColor = colorResultadoEstadistica(estadistica);
         }
 
-        return card("Jugador", detail, meta, metaColor, new Dimension(320, estadistica == null ? 170 : 196));
+        return tarjeta("Jugador", detail, meta, metaColor, new Dimension(320, estadistica == null ? 170 : 196));
     }
 
-    private JPanel emptyStateCard(String message) {
-        return card("Sin datos", "<html><body style='width:280px'>" + message + "</body></html>", "", MUTED, new Dimension(320, 120));
+    private JPanel tarjetaEstadoVacio(String message) {
+        return tarjeta("Sin datos", "<html><body style='width:280px'>" + message + "</body></html>", "", MUTED, new Dimension(320, 120));
     }
 
-    private Estadistica findStat(Scrim scrim, Usuario usuario) {
+    private Estadistica buscarEstadistica(Scrim scrim, Usuario usuario) {
         for (Estadistica estadistica : scrim.getEstadisticas()) {
             if (estadistica.getUsuario().equals(usuario)) {
                 return estadistica;
@@ -1121,9 +1132,9 @@ public class EScrimsFrame extends JFrame {
         return ACCENT;
     }
 
-    private void changePostulacion(Postulacion postulacion, boolean aceptar) {
+    private void cambiarPostulacion(Postulacion postulacion, boolean aceptar) {
         if (postulacion == null) {
-            showWarning("Selecciona una postulacion");
+            mostrarAdvertencia("Selecciona una postulacion");
             return;
         }
         if (aceptar) {
@@ -1131,17 +1142,17 @@ public class EScrimsFrame extends JFrame {
         } else {
             postulacion.rechazar();
         }
-        log("Postulacion actualizada: " + postulacion);
-        refreshAll();
+        registrarEvento("Postulacion actualizada: " + postulacion);
+        refrescarTodo();
     }
 
-    private void confirmPostulacion(Postulacion postulacion) {
+    private void confirmarPostulacion(Postulacion postulacion) {
         try {
             Confirmacion confirmacion = postulacion.confirmarAsistencia();
-            log("Asistencia confirmada desde postulacion: " + confirmacion.getUsuario());
-            refreshAll();
+            registrarEvento("Asistencia confirmada desde postulacion: " + confirmacion.getUsuario());
+            refrescarTodo();
         } catch (RuntimeException ex) {
-            showWarning(ex.getMessage());
+            mostrarAdvertencia(ex.getMessage());
         }
     }
 
@@ -1168,7 +1179,7 @@ public class EScrimsFrame extends JFrame {
         return ACCENT;
     }
 
-    private String nextActionLabel(Scrim scrim) {
+    private String etiquetaSiguienteAccion(Scrim scrim) {
         return switch (scrim.getEstadoActual()) {
             case "BuscandoJugadores" -> "Cerrar postulaciones";
             case "LobbyArmado" -> "Confirmar";
@@ -1188,14 +1199,14 @@ public class EScrimsFrame extends JFrame {
         if (action == null) {
             return;
         }
-        runStateAction(action, scrim);
+        ejecutarAccionEstado(action, scrim);
     }
 
-    private void runStateAction(String action, Scrim scrim) {
+    private void ejecutarAccionEstado(String action, Scrim scrim) {
         try {
             ScrimContext context = contexts.get(scrim);
             if (context == null) {
-                showWarning("Selecciona un scrim");
+                mostrarAdvertencia("Selecciona un scrim");
                 return;
             }
             switch (action) {
@@ -1206,14 +1217,14 @@ public class EScrimsFrame extends JFrame {
                 case "cancelar" -> context.cancelar();
                 default -> throw new IllegalArgumentException("Accion desconocida");
             }
-            log("Estado actualizado: " + scrim.getEstadoActual());
-            refreshAll();
+            registrarEvento("Estado actualizado: " + scrim.getEstadoActual());
+            refrescarTodo();
         } catch (RuntimeException ex) {
-            showWarning(ex.getMessage());
+            mostrarAdvertencia(ex.getMessage());
         }
     }
 
-    private MatchmakingStrategy strategyFor(String name, Scrim scrim) {
+    private MatchmakingStrategy estrategiaPara(String name, Scrim scrim) {
         return switch (name) {
             case "Priorizar baja latencia" -> new ByLatencyStrategy(scrim.getLatenciaMaxima());
             case "Priorizar historial" -> new ByHistoryStrategy(5);
@@ -1221,7 +1232,7 @@ public class EScrimsFrame extends JFrame {
         };
     }
 
-    private JPanel formPanel() {
+    private JPanel panelFormulario() {
         JPanel panel = new RoundedPanel(PANEL, new Color(53, 64, 88), 18, 1);
         panel.setLayout(new GridBagLayout());
         panel.setBorder(BorderFactory.createCompoundBorder(
@@ -1231,12 +1242,12 @@ public class EScrimsFrame extends JFrame {
         return panel;
     }
 
-    private JPanel splitWithList(JPanel left, String title, JList<?> list) {
+    private JPanel dividirConLista(JPanel left, String title, JList<?> list) {
         list.setVisibleRowCount(18);
-        return splitWithComponent(left, title, new JScrollPane(list));
+        return dividirConComponente(left, title, new JScrollPane(list));
     }
 
-    private JPanel splitWithComponent(JPanel left, String title, java.awt.Component component) {
+    private JPanel dividirConComponente(JPanel left, String title, java.awt.Component component) {
         JPanel right = new RoundedPanel(PANEL_ALT, new Color(52, 63, 86), 20, 1);
         right.setLayout(new BorderLayout());
         right.setBorder(BorderFactory.createCompoundBorder(
@@ -1252,28 +1263,28 @@ public class EScrimsFrame extends JFrame {
         return panel;
     }
 
-    private void addRow(JPanel panel, int row, String label, java.awt.Component component) {
-        GridBagConstraints labelConstraints = constraints(0, row);
+    private void agregarFila(JPanel panel, int row, String label, java.awt.Component component) {
+        GridBagConstraints labelConstraints = restricciones(0, row);
         labelConstraints.anchor = GridBagConstraints.EAST;
         JLabel text = new JLabel(label);
         text.setFont(UI_FONT_BOLD);
         text.setForeground(MUTED);
         panel.add(text, labelConstraints);
-        GridBagConstraints fieldConstraints = constraints(1, row);
+        GridBagConstraints fieldConstraints = restricciones(1, row);
         fieldConstraints.fill = GridBagConstraints.HORIZONTAL;
         fieldConstraints.weightx = 1;
         panel.add(component, fieldConstraints);
     }
 
-    private void addRow(JPanel panel, int row, String label, java.awt.Component component, String hint) {
+    private void agregarFila(JPanel panel, int row, String label, java.awt.Component component, String hint) {
         component.setName(label);
         if (component instanceof JComponent jComponent) {
             jComponent.setToolTipText(hint);
         }
-        addRow(panel, row, label, withHint(component, hint));
+        agregarFila(panel, row, label, conAyuda(component, hint));
     }
 
-    private JPanel withHint(java.awt.Component component, String hint) {
+    private JPanel conAyuda(java.awt.Component component, String hint) {
         JPanel wrapper = new JPanel(new BorderLayout(0, 4));
         wrapper.setOpaque(false);
         JLabel hintLabel = new JLabel(hint);
@@ -1284,14 +1295,14 @@ public class EScrimsFrame extends JFrame {
         return wrapper;
     }
 
-    private void addWide(JPanel panel, int row, java.awt.Component component) {
-        GridBagConstraints c = constraints(0, row);
+    private void agregarFilaCompleta(JPanel panel, int row, java.awt.Component component) {
+        GridBagConstraints c = restricciones(0, row);
         c.gridwidth = 2;
         c.fill = GridBagConstraints.HORIZONTAL;
         panel.add(component, c);
     }
 
-    private GridBagConstraints constraints(int x, int y) {
+    private GridBagConstraints restricciones(int x, int y) {
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = x;
         c.gridy = y;
@@ -1299,7 +1310,7 @@ public class EScrimsFrame extends JFrame {
         return c;
     }
 
-    private JPanel compact(java.awt.Component first, java.awt.Component second, java.awt.Component third) {
+    private JPanel compacto(java.awt.Component first, java.awt.Component second, java.awt.Component third) {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
         panel.add(first);
@@ -1308,7 +1319,7 @@ public class EScrimsFrame extends JFrame {
         return panel;
     }
 
-    private JPanel sectionIntro(String title, String description) {
+    private JPanel introduccionSeccion(String title, String description) {
         JPanel panel = new RoundedPanel(PANEL_ALT, new Color(52, 63, 86), 16, 1);
         panel.setLayout(new BorderLayout(0, 4));
         panel.setBorder(BorderFactory.createCompoundBorder(
@@ -1326,20 +1337,20 @@ public class EScrimsFrame extends JFrame {
         return panel;
     }
 
-    private JPanel strategyHelp() {
+    private JPanel ayudaEstrategia() {
         JPanel panel = new RoundedPanel(PANEL_ALT, new Color(52, 63, 86), 16, 1);
         panel.setLayout(new GridLayout(0, 1, 0, 6));
         panel.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedBorder(new Color(52, 63, 86), 16, 1),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
-        panel.add(helpLine("Equilibrar por MMR", "Intenta juntar jugadores con nivel competitivo similar."));
-        panel.add(helpLine("Priorizar baja latencia", "Favorece mejores condiciones tecnicas de conexion."));
-        panel.add(helpLine("Priorizar historial", "Ordena la seleccion segun experiencia previa."));
+        panel.add(lineaAyuda("Equilibrar por MMR", "Intenta juntar jugadores con nivel competitivo similar."));
+        panel.add(lineaAyuda("Priorizar baja latencia", "Favorece mejores condiciones tecnicas de conexion."));
+        panel.add(lineaAyuda("Priorizar historial", "Ordena la seleccion segun experiencia previa."));
         return panel;
     }
 
-    private JLabel helpLine(String title, String text) {
+    private JLabel lineaAyuda(String title, String text) {
         JLabel label = new JLabel("<html><b>" + title + ":</b> " + text + "</html>");
         label.setForeground(MUTED);
         label.setFont(UI_FONT);
@@ -1347,20 +1358,20 @@ public class EScrimsFrame extends JFrame {
     }
 
     @SuppressWarnings("unchecked")
-    private <T> void setModel(JComboBox<T> combo, List<T> values) {
-        T selected = (T) combo.getSelectedItem();
+    private <T> void asignarModelo(JComboBox<T> combo, List<T> values) {
+        T seleccionado = (T) combo.getSelectedItem();
         DefaultComboBoxModel<T> model = new DefaultComboBoxModel<>();
         for (T value : values) {
             model.addElement(value);
         }
         combo.setModel(model);
-        if (selected != null && values.contains(selected)) {
-            combo.setSelectedItem(selected);
+        if (seleccionado != null && values.contains(seleccionado)) {
+            combo.setSelectedItem(seleccionado);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T selected(JComboBox<T> combo) {
+    private <T> T seleccionado(JComboBox<T> combo) {
         T item = (T) combo.getSelectedItem();
         if (item == null) {
             throw new IllegalStateException("Faltan datos para completar la accion");
@@ -1368,7 +1379,7 @@ public class EScrimsFrame extends JFrame {
         return item;
     }
 
-    private List<String> parseRoles(String raw) {
+    private List<String> parsearRoles(String raw) {
         List<String> roles = new ArrayList<>();
         for (String role : raw.split(",")) {
             if (!role.isBlank()) {
@@ -1378,38 +1389,38 @@ public class EScrimsFrame extends JFrame {
         return roles;
     }
 
-    private void clearFields(JTextField... fields) {
+    private void limpiarCampos(JTextField... fields) {
         for (JTextField field : fields) {
             field.setText("");
         }
     }
 
-    private boolean requireText(JTextField... fields) {
+    private boolean requerirTexto(JTextField... fields) {
         for (JTextField field : fields) {
             if (field.getText().isBlank()) {
                 field.requestFocusInWindow();
-                showWarning("Completa todos los campos requeridos");
+                mostrarAdvertencia("Completa todos los campos requeridos");
                 return false;
             }
         }
         return true;
     }
 
-    private String nextId(String prefix) {
+    private String siguienteId(String prefix) {
         return prefix + "-" + ids.getAndIncrement();
     }
 
-    private void log(String message) {
+    private void registrarEvento(String message) {
         eventLog.append(message + System.lineSeparator());
         eventLog.setCaretPosition(eventLog.getDocument().getLength());
     }
 
-    private void showWarning(String message) {
+    private void mostrarAdvertencia(String message) {
         JOptionPane.showMessageDialog(this, message, "eScrims", JOptionPane.WARNING_MESSAGE);
     }
 
-    private void applyGlobalTheme() {
-        UIManager.put("TabbedPane.selected", PANEL);
+    private void aplicarTemaGlobal() {
+        UIManager.put("TabbedPane.seleccionado", PANEL);
         UIManager.put("TabbedPane.contentAreaColor", BG);
         UIManager.put("TabbedPane.focus", ACCENT);
         UIManager.put("OptionPane.background", PANEL);
@@ -1428,16 +1439,16 @@ public class EScrimsFrame extends JFrame {
         UIManager.put("ComboBox.buttonShadow", LINE);
     }
 
-    private void styleTree(Component component) {
-        styleComponent(component);
+    private void estilizarArbol(Component component) {
+        estilizarComponente(component);
         if (component instanceof java.awt.Container container) {
             for (Component child : container.getComponents()) {
-                styleTree(child);
+                estilizarArbol(child);
             }
         }
     }
 
-    private void styleComponent(Component component) {
+    private void estilizarComponente(Component component) {
         if (component instanceof JPanel panel) {
             if (panel.getBackground().equals(new JPanel().getBackground())) {
                 panel.setBackground(PANEL);
@@ -1450,17 +1461,17 @@ public class EScrimsFrame extends JFrame {
                 label.setForeground(TEXT);
             }
         } else if (component instanceof JButton button) {
-            styleButton(button);
+            estilizarBoton(button);
         } else if (component instanceof JTextField field) {
-            styleTextField(field);
+            estilizarCampoTexto(field);
         } else if (component instanceof JTextArea area) {
-            styleTextArea(area);
+            estilizarAreaTexto(area);
         } else if (component instanceof JComboBox<?> combo) {
-            styleCombo(combo);
+            estilizarCombo(combo);
         } else if (component instanceof JSpinner spinner) {
-            styleSpinner(spinner);
+            estilizarSpinner(spinner);
         } else if (component instanceof JList<?> list) {
-            styleList(list);
+            estilizarLista(list);
         } else if (component instanceof JScrollPane scrollPane) {
             scrollPane.setBorder(new RoundedBorder(new Color(48, 59, 80), 18, 1));
             scrollPane.getViewport().setBackground(FIELD);
@@ -1468,34 +1479,34 @@ public class EScrimsFrame extends JFrame {
         }
     }
 
-    private void styleTabbedPane(JTabbedPane tabs) {
+    private void estilizarPestanias(JTabbedPane tabs) {
         tabs.setBackground(BG);
         tabs.setForeground(TEXT);
         tabs.setFont(UI_FONT_BOLD);
         tabs.setBorder(BorderFactory.createEmptyBorder(10, 12, 8, 12));
     }
 
-    private void styleButton(JButton button) {
+    private void estilizarBoton(JButton button) {
         button.setFont(UI_FONT_BOLD);
-        button.setBackground(isDangerAction(button.getText()) ? new Color(72, 28, 43) : new Color(20, 61, 75));
-        button.setForeground(isDangerAction(button.getText()) ? DANGER : ACCENT);
+        button.setBackground(esAccionPeligrosa(button.getText()) ? new Color(72, 28, 43) : new Color(20, 61, 75));
+        button.setForeground(esAccionPeligrosa(button.getText()) ? DANGER : ACCENT);
         button.setFocusPainted(false);
         button.setContentAreaFilled(false);
         button.setOpaque(true);
         button.setBorder(BorderFactory.createCompoundBorder(
-                new RoundedBorder(isDangerAction(button.getText()) ? DANGER : new Color(22, 155, 178), 16, 1),
+                new RoundedBorder(esAccionPeligrosa(button.getText()) ? DANGER : new Color(22, 155, 178), 16, 1),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)
         ));
-        boolean compact = Boolean.TRUE.equals(button.getClientProperty("compact"));
-        button.setPreferredSize(new Dimension(Math.max(button.getPreferredSize().width, compact ? 108 : 180), compact ? 32 : 36));
+        boolean compacto = Boolean.TRUE.equals(button.getClientProperty("compacto"));
+        button.setPreferredSize(new Dimension(Math.max(button.getPreferredSize().width, compacto ? 108 : 180), compacto ? 32 : 36));
     }
 
-    private boolean isDangerAction(String text) {
+    private boolean esAccionPeligrosa(String text) {
         String lower = text.toLowerCase();
         return lower.contains("rechazar") || lower.contains("cancelar") || lower.contains("reporte");
     }
 
-    private void styleTextField(JTextField field) {
+    private void estilizarCampoTexto(JTextField field) {
         field.setFont(UI_FONT);
         field.setBackground(FIELD);
         field.setForeground(TEXT);
@@ -1508,7 +1519,7 @@ public class EScrimsFrame extends JFrame {
         ));
     }
 
-    private void styleTextArea(JTextArea area) {
+    private void estilizarAreaTexto(JTextArea area) {
         area.setFont(MONO_FONT);
         area.setBackground(new Color(7, 10, 15));
         area.setForeground(new Color(190, 255, 220));
@@ -1518,7 +1529,7 @@ public class EScrimsFrame extends JFrame {
         area.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
     }
 
-    private void styleCombo(JComboBox<?> combo) {
+    private void estilizarCombo(JComboBox<?> combo) {
         combo.setBackground(FIELD);
         combo.setForeground(TEXT);
         combo.setFont(UI_FONT);
@@ -1535,15 +1546,15 @@ public class EScrimsFrame extends JFrame {
         }
     }
 
-    private void styleSpinner(JSpinner spinner) {
+    private void estilizarSpinner(JSpinner spinner) {
         spinner.setBorder(new RoundedBorder(new Color(55, 65, 86), 14, 1));
         Component editor = spinner.getEditor();
         if (editor instanceof JSpinner.DefaultEditor defaultEditor) {
-            styleTextField(defaultEditor.getTextField());
+            estilizarCampoTexto(defaultEditor.getTextField());
         }
     }
 
-    private void styleList(JList<?> list) {
+    private void estilizarLista(JList<?> list) {
         list.setBackground(FIELD);
         list.setForeground(TEXT);
         list.setSelectionBackground(new Color(0, 83, 103));
@@ -1553,7 +1564,7 @@ public class EScrimsFrame extends JFrame {
         list.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
     }
 
-    private JScrollPane darkScroll(Component component) {
+    private JScrollPane scrollOscuro(Component component) {
         JScrollPane scrollPane = new JScrollPane(component);
         scrollPane.setBorder(new RoundedBorder(new Color(48, 59, 80), 18, 1));
         scrollPane.getViewport().setBackground(FIELD);
@@ -1661,17 +1672,17 @@ public class EScrimsFrame extends JFrame {
 
         @Override
         public Dimension preferredLayoutSize(Container target) {
-            return layoutSize(target, true);
+            return calcularTamanioLayout(target, true);
         }
 
         @Override
         public Dimension minimumLayoutSize(Container target) {
-            Dimension minimum = layoutSize(target, false);
+            Dimension minimum = calcularTamanioLayout(target, false);
             minimum.width -= getHgap() + 1;
             return minimum;
         }
 
-        private Dimension layoutSize(Container target, boolean preferred) {
+        private Dimension calcularTamanioLayout(Container target, boolean preferred) {
             synchronized (target.getTreeLock()) {
                 int targetWidth = target.getSize().width;
                 if (targetWidth == 0) {
@@ -1696,7 +1707,7 @@ public class EScrimsFrame extends JFrame {
                     Dimension componentDimension = preferred ? component.getPreferredSize() : component.getMinimumSize();
 
                     if (rowWidth + componentDimension.width > maxWidth) {
-                        addRow(dimension, rowWidth, rowHeight);
+                        agregarFila(dimension, rowWidth, rowHeight);
                         rowWidth = 0;
                         rowHeight = 0;
                     }
@@ -1709,7 +1720,7 @@ public class EScrimsFrame extends JFrame {
                     rowHeight = Math.max(rowHeight, componentDimension.height);
                 }
 
-                addRow(dimension, rowWidth, rowHeight);
+                agregarFila(dimension, rowWidth, rowHeight);
                 dimension.width += horizontalInsetsAndGap;
                 dimension.height += insets.top + insets.bottom + (getVgap() * 2);
 
@@ -1722,7 +1733,7 @@ public class EScrimsFrame extends JFrame {
             }
         }
 
-        private void addRow(Dimension dimension, int rowWidth, int rowHeight) {
+        private void agregarFila(Dimension dimension, int rowWidth, int rowHeight) {
             dimension.width = Math.max(dimension.width, rowWidth);
             if (dimension.height > 0) {
                 dimension.height += getVgap();
@@ -1731,7 +1742,7 @@ public class EScrimsFrame extends JFrame {
         }
     }
 
-    public static void showUI() {
+    public static void mostrarInterfaz() {
         SwingUtilities.invokeLater(() -> new EScrimsFrame().setVisible(true));
     }
 }

@@ -11,16 +11,24 @@ class Usuario {
   - passwordHash: String
   - estadoVerificacion: String
   - disponibilidadHoraria: String
+  - regionPrincipal: Region
+  - perfiles: List<PerfilJuego>
+  - notificaciones: List<Notificacion>
   + registrarse(): void
-  + actualizarPerfil(): void
+  + actualizarPerfil(username: String, email: String, disponibilidadHoraria: String, regionPrincipal: Region): void
+  + agregarPerfilJuego(perfil: PerfilJuego): void
+  + reemplazarPerfilJuego(perfilActual: PerfilJuego, perfilNuevo: PerfilJuego): void
   + postularse(scrim: Scrim, rolDeseado: String): Postulacion
   + confirmarParticipacion(scrim: Scrim): Confirmacion
   + reportarConducta(usuarioReportado: Usuario, scrim: Scrim, motivo: String): ReporteConducta
+  + recibirNotificacion(notificacion: Notificacion): void
+  + perfilPara(juego: Juego): PerfilJuego
 }
 
 class PerfilJuego {
   - id: String
-  - rango : String
+  - juego: Juego
+  - rango: String
   - mmr: Integer
   - rolesPreferidos: List<String>
   + actualizarRango(nuevoRango: String): void
@@ -43,6 +51,8 @@ class Region {
 
 class Scrim {
   - id: String
+  - juego: Juego
+  - region: Region
   - fechaHora: DateTime
   - duracionMinutos: Integer
   - mmrMinimo: Integer
@@ -51,25 +61,50 @@ class Scrim {
   - modalidad: String
   - estadoActual: String
   - cantidadJugadores: Integer
-  - formato : String
+  - cantidadEquipos: Integer
+  - jugadoresPorEquipo: Integer
+  - formato: String
+  - equipos: List<Equipo>
+  - postulaciones: List<Postulacion>
+  - confirmaciones: List<Confirmacion>
+  - notificaciones: List<Notificacion>
+  - estadisticas: List<Estadistica>
+  - feedback: List<ComentarioFeedback>
+  - reportes: List<ReporteConducta>
   + abrirPostulaciones(): void
   + cerrarPostulaciones(): void
   + iniciar(): void
   + finalizar(): void
   + cancelar(): void
   + cambiarEstado(nuevoEstado: String): void
+  + recibirPostulacion(postulacion: Postulacion): void
+  + agregarConfirmacion(confirmacion: Confirmacion): void
+  + agregarEstadistica(estadistica: Estadistica): void
+  + agregarFeedback(comentario: ComentarioFeedback): void
+  + agregarReporte(reporte: ReporteConducta): void
+  + agregarNotificacion(notificacion: Notificacion): void
+  + reiniciarEquipos(): void
+  + yaTieneParticipacion(usuario: Usuario): Boolean
+  + yaSePostulo(usuario: Usuario): Boolean
+  + usuarioYaConfirmo(usuario: Usuario): Boolean
+  + tieneCupoCompleto(): Boolean
 }
 
 class Equipo {
   - id: String
   - lado: String
+  - participaciones: List<Participacion>
   + agregarJugador(usuario: Usuario, rol: String): Participacion
   + quitarJugador(participacion: Participacion): void
   + asignarCapitan(participacion: Participacion): void
+  + contieneUsuario(usuario: Usuario): Boolean
+  + limpiarParticipaciones(): void
+  + cantidadJugadores(): Integer
 }
 
 class Participacion {
   - id: String
+  - usuario: Usuario
   - rol: String
   - esCapitan: Boolean
   - esSuplente: Boolean
@@ -77,19 +112,25 @@ class Participacion {
   - fechaIngreso: DateTime
   + cambiarRol(nuevoRol: String): void
   + abandonar(): void
+  + asignarCapitan(): void
 }
 
 class Postulacion {
   - id: String
+  - usuario: Usuario
+  - scrim: Scrim
   - rolDeseado: String
   - estado: String
   - fechaPostulacion: DateTime
   + aceptar(): void
   + rechazar(): void
+  + confirmarAsistencia(): Confirmacion
 }
 
 class Confirmacion {
   - id: String
+  - usuario: Usuario
+  - scrim: Scrim
   - confirmado: Boolean
   - fechaConfirmacion: DateTime
   + confirmar(): void
@@ -110,17 +151,21 @@ class Notificacion {
 
 class Estadistica {
   - id: String
+  - usuario: Usuario
+  - scrim: Scrim
   - kills: Integer
   - deaths: Integer
   - assists: Integer
   - mvp: Boolean
   - observaciones: String
-  - resultado : String
+  - resultado: String
   + calcularKDA(): Decimal
 }
 
 class ComentarioFeedback {
   - id: String
+  - usuario: Usuario
+  - scrim: Scrim
   - comentario: String
   - rating: Integer
   - estadoModeracion: String
@@ -131,45 +176,41 @@ class ComentarioFeedback {
 
 class ReporteConducta {
   - id: String
+  - scrim: Scrim
+  - reportante: Usuario
+  - reportado: Usuario
   - motivo: String
   - estado: String
   - sancion: String
   - fechaCreacion: DateTime
   + procesar(): void
-  + resolver(): void
+  + resolver(sancion: String): void
   + obtenerReportante(): Usuario
   + obtenerReportado(): Usuario
 }
 
-Usuario "1" *-- "0..*" PerfilJuego : posee perfiles por juego
-Juego "1" o-- "0..*" PerfilJuego : define perfil para juego
+Usuario "1" *-- "0..*" PerfilJuego : posee perfiles
+Juego "1" <-- "0..*" PerfilJuego : define perfil
+Region "1" <-- "0..*" Usuario : region principal
+Usuario "1" *-- "0..*" Notificacion : recibe
 
 Juego "1" <-- "0..*" Scrim : pertenece a juego
 Region "1" <-- "0..*" Scrim : se juega en region
-Region "1" <-- "0..*" Usuario : juega principalmente en
-
 Scrim "1" *-- "2..*" Equipo : contiene
+Scrim "1" o-- "0..*" Postulacion : recibe
+Scrim "1" o-- "0..*" Confirmacion : requiere
+Scrim "1" o-- "0..*" Notificacion : registra
+Scrim "1" o-- "0..*" Estadistica : produce
+Scrim "1" o-- "0..*" ComentarioFeedback : recibe feedback
+Scrim "1" o-- "0..*" ReporteConducta : genera reportes
 
 Equipo "1" *-- "0..*" Participacion : registra integrantes
-Usuario "1" <-- "0..*" Participacion : participa en equipos
-
-Usuario "1" <-- "0..*" Postulacion : realiza postulaciones
-Scrim "1" o-- "0..*" Postulacion : recibe postulaciones
-
-Usuario "1" <-- "0..*" Confirmacion : confirma asistencia
-Scrim "1" o-- "0..*" Confirmacion : requiere confirmaciones
-
-Usuario "1" *-- "0..*" Notificacion : recibe
-Scrim "1" o-- "0..*" Notificacion : genera eventos
-
-Usuario "1" <-- "0..*" Estadistica : posee estadisticas
-Scrim "1" o-- "0..*" Estadistica : produce estadisticas
-
-Usuario "1" <-- "0..*" ComentarioFeedback : escribe feedback
-Scrim "1" o-- "0..*" ComentarioFeedback : recibe feedback
-
-Scrim "1" o-- "0..*" ReporteConducta : genera reportes
+Usuario "1" <-- "0..*" Participacion : participa
+Usuario "1" <-- "0..*" Postulacion : realiza
+Usuario "1" <-- "0..*" Confirmacion : confirma
+Usuario "1" <-- "0..*" Estadistica : posee
+Usuario "1" <-- "0..*" ComentarioFeedback : escribe
+Usuario "1" <-- "0..*" ReporteConducta : reportante
 Usuario "1" <-- "0..*" ReporteConducta : reportado
-Usuario "1" <-- "0..*" ReporteConducta : creado por
 
 @enduml
