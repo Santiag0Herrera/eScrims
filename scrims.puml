@@ -245,6 +245,8 @@ package "Observer - Eventos de dominio" {
     - id: String
     - timestamp: DateTime
     - tipo: String
+    - region: String
+    - canal: String
     + describir(): String
   }
 
@@ -260,7 +262,7 @@ package "Observer - Eventos de dominio" {
   }
 
   class NotificationSubscriber <<Observer>> {
-    - factory: NotifierFactory
+    - factoriesByRegion: Map<String, NotifierFactory>
     + onEvent(event: DomainEvent): void
   }
 }
@@ -286,12 +288,29 @@ package "Abstract Factory - Notificadores" {
   }
 
   interface NotifierFactory <<AbstractFactory>> {
-    + createNotifier(canal: String): Notifier
+    + createPrimaryNotifier(): Notifier
+    + createSecondaryNotifier(): Notifier
   }
 
-  class ChannelNotifierFactory <<AbstractFactory>> {
-    - canalesSoportados: List<String>
-    + createNotifier(canal: String): Notifier
+  class LATAMNotifierFactory <<AbstractFactory>> {
+    - emailProvider: ExternalNotificationProvider
+    - discordProvider: ExternalNotificationProvider
+    + createPrimaryNotifier(): Notifier
+    + createSecondaryNotifier(): Notifier
+  }
+
+  class EUNotifierFactory <<AbstractFactory>> {
+    - emailProvider: ExternalNotificationProvider
+    - pushProvider: ExternalNotificationProvider
+    + createPrimaryNotifier(): Notifier
+    + createSecondaryNotifier(): Notifier
+  }
+
+  class NANotifierFactory <<AbstractFactory>> {
+    - pushProvider: ExternalNotificationProvider
+    - discordProvider: ExternalNotificationProvider
+    + createPrimaryNotifier(): Notifier
+    + createSecondaryNotifier(): Notifier
   }
 }
 
@@ -382,7 +401,9 @@ NotificationSubscriber ..|> Subscriber : implementa
 DomainEventBus "1" ..> "0..*" DomainEvent : publica
 
 NotifierFactory "1" ..> "1" Notifier : crea
-ChannelNotifierFactory ..|> NotifierFactory : implementa
+LATAMNotifierFactory ..|> NotifierFactory : implementa
+EUNotifierFactory ..|> NotifierFactory : implementa
+NANotifierFactory ..|> NotifierFactory : implementa
 EmailNotifier ..|> Notifier : implementa
 PushNotifier ..|> Notifier : implementa
 DiscordNotifier ..|> Notifier : implementa
@@ -396,11 +417,14 @@ FirebaseAdapter "1" o-- "1" FirebaseAPI : llama
 
 ScrimContext "1" o-- "1" DomainEventBus : emite
 DomainEventBus "1" --> "0..*" NotificationSubscriber : notifica
-NotificationSubscriber "1" o-- "1" NotifierFactory : usa
+NotificationSubscriber "1" o-- "1..*" NotifierFactory : selecciona
 
-ChannelNotifierFactory "1" ..> "0..*" EmailNotifier : EMAIL
-ChannelNotifierFactory "1" ..> "0..*" PushNotifier : PUSH
-ChannelNotifierFactory "1" ..> "0..*" DiscordNotifier : DISCORD
+LATAMNotifierFactory "1" ..> "0..*" EmailNotifier : primary
+LATAMNotifierFactory "1" ..> "0..*" DiscordNotifier : secondary
+EUNotifierFactory "1" ..> "0..*" EmailNotifier : primary
+EUNotifierFactory "1" ..> "0..*" PushNotifier : secondary
+NANotifierFactory "1" ..> "0..*" PushNotifier : primary
+NANotifierFactory "1" ..> "0..*" DiscordNotifier : secondary
 
 DiscordNotifier "1" o-- "1" DiscordAdapter : usa
 EmailNotifier "1" o-- "1" SendGridAdapter : usa
@@ -430,14 +454,15 @@ note left of DomainEventBus
 end note
 
 note bottom of NotificationSubscriber
-  Observer obtiene el canal del evento,
-  solicita un Notifier a la Factory
-  y ejecuta send(event).
+  Observer obtiene la region del evento,
+  selecciona la fabrica concreta y envia
+  la notificacion con un notificador
+  primario y otro secundario.
 
-  Abstract Factory centraliza la creacion
-  del notificador adecuado segun el canal.
-  El subscriber no conoce clases concretas:
-  solo pide un Notifier y lo utiliza.
+  Abstract Factory define familias de
+  notificadores por region. El subscriber
+  trabaja contra NotifierFactory y no
+  depende de productos concretos.
 end note
 
 note right of DiscordAdapter

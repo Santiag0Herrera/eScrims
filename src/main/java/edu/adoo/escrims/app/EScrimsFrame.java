@@ -18,7 +18,11 @@ import edu.adoo.escrims.patterns.adapter.FirebaseAPI;
 import edu.adoo.escrims.patterns.adapter.FirebaseAdapter;
 import edu.adoo.escrims.patterns.adapter.SendGridAPI;
 import edu.adoo.escrims.patterns.adapter.SendGridAdapter;
-import edu.adoo.escrims.patterns.factory.ChannelNotifierFactory;
+import edu.adoo.escrims.patterns.factory.EUNotifierFactory;
+import edu.adoo.escrims.patterns.factory.LATAMNotifierFactory;
+import edu.adoo.escrims.patterns.factory.NANotifierFactory;
+import edu.adoo.escrims.patterns.factory.NotifierFactory;
+import edu.adoo.escrims.patterns.observer.DomainEvent;
 import edu.adoo.escrims.patterns.observer.DomainEventBus;
 import edu.adoo.escrims.patterns.observer.NotificationSubscriber;
 import edu.adoo.escrims.patterns.state.ScrimContext;
@@ -216,7 +220,13 @@ public class EScrimsFrame extends JFrame {
     private JPanel buildScrimsPanel() {
         JButton crear = new JButton("Crear scrim");
         crear.addActionListener(event -> showCreateScrimDialog());
-        return boardPanel("Scrims", "Cada scrim muestra la siguiente accion disponible en su ciclo de vida", crear, scrimsGrid);
+        JButton probarDiscord = new JButton("Probar Discord");
+        probarDiscord.addActionListener(event -> testDiscordNotification());
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        actions.setOpaque(false);
+        actions.add(probarDiscord);
+        actions.add(crear);
+        return boardPanel("Scrims", "Cada scrim muestra la siguiente accion disponible en su ciclo de vida", actions, scrimsGrid);
     }
 
     private JPanel buildPostulacionesPanel() {
@@ -569,7 +579,7 @@ public class EScrimsFrame extends JFrame {
         dialog.setVisible(true);
     }
 
-    private JPanel boardPanel(String title, String subtitle, JButton action, JPanel grid) {
+    private JPanel boardPanel(String title, String subtitle, JComponent action, JPanel grid) {
         JPanel panel = new JPanel(new BorderLayout(0, 12));
         panel.setBackground(BG);
         panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -704,20 +714,24 @@ public class EScrimsFrame extends JFrame {
                 continue;
             }
             for (Participacion participacion : equipo.getParticipaciones()) {
-                PerfilJuego perfil = participacion.getUsuario().perfilPara(scrim.getJuego());
                 meta.append("<br>- <span style='font-size:13px'><b>")
                         .append(participacion.getUsuario().getUsername())
                         .append("</b></span>")
                         .append("<br>&nbsp;&nbsp;")
-                        .append(perfil.getRango())
-                        .append(" | ")
-                        .append(participacion.getRol())
-                        .append(" | MMR ")
-                        .append(perfil.getMmr());
+                        .append(playerMetaFor(participacion, scrim));
             }
             numeroEquipo++;
         }
         return meta.toString();
+    }
+
+    private String playerMetaFor(Participacion participacion, Scrim scrim) {
+        try {
+            PerfilJuego perfil = participacion.getUsuario().perfilPara(scrim.getJuego());
+            return perfil.getRango() + " | " + participacion.getRol() + " | MMR " + perfil.getMmr();
+        } catch (IllegalStateException ex) {
+            return participacion.getRol() + " | sin perfil para " + scrim.getJuego().getNombre();
+        }
     }
 
     private <T> JComboBox<T> comboFor(List<T> values) {
@@ -734,10 +748,25 @@ public class EScrimsFrame extends JFrame {
     private void configureEvents() {
         SendGridAdapter sendGrid = new SendGridAdapter(new SendGridAPI("sendgrid-key", this::log));
         FirebaseAdapter firebase = new FirebaseAdapter(new FirebaseAPI("escrims-app", this::log));
-        DiscordAdapter discord = new DiscordAdapter(new DiscordAPI("https://discord.local/webhook", this::log));
-        ChannelNotifierFactory factory = new ChannelNotifierFactory(sendGrid, firebase, discord);
+        DiscordAdapter discord = new DiscordAdapter(new DiscordAPI(System.getenv("DISCORD_WEBHOOK_URL"), this::log));
+        Map<String, NotifierFactory> factoriesByRegion = Map.of(
+                "LATAM", new LATAMNotifierFactory(sendGrid, discord),
+                "EU", new EUNotifierFactory(sendGrid, firebase),
+                "NA", new NANotifierFactory(firebase, discord)
+        );
         eventBus = new DomainEventBus();
-        eventBus.subscribe(new NotificationSubscriber(factory));
+        eventBus.subscribe(new NotificationSubscriber(factoriesByRegion));
+    }
+
+    private void testDiscordNotification() {
+        eventBus.publish(new DomainEvent(
+                "evt-discord-test-" + ids.getAndIncrement(),
+                "PRUEBA_DISCORD",
+                "LATAM",
+                "DISCORD",
+                Map.of("mensaje", "Discord conectado correctamente desde eScrims", "region", "LATAM")
+        ));
+        log("Prueba de Discord enviada al adaptador");
     }
 
     private void seedCatalogs() {
@@ -1067,10 +1096,9 @@ public class EScrimsFrame extends JFrame {
 
     private JPanel buildPlayerStatCard(Scrim scrim, Participacion participacion) {
         Estadistica estadistica = findStat(scrim, participacion.getUsuario());
-        PerfilJuego perfil = participacion.getUsuario().perfilPara(scrim.getJuego());
         String detail = "<html><body style='width:280px'>"
                 + "<span style='font-size:13px'><b>" + participacion.getUsuario().getUsername() + "</b></span>"
-                + "<br>" + perfil.getRango() + " | " + participacion.getRol() + " | MMR " + perfil.getMmr()
+                + "<br>" + playerMetaFor(participacion, scrim)
                 + "</body></html>";
 
         String meta;
@@ -1400,6 +1428,10 @@ public class EScrimsFrame extends JFrame {
     }
 
     private void log(String message) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> log(message));
+            return;
+        }
         eventLog.append(message + System.lineSeparator());
         eventLog.setCaretPosition(eventLog.getDocument().getLength());
     }
