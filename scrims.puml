@@ -239,12 +239,71 @@ package "State" {
     + canalNotificacion(): String
   }
 
-  class BuscandoJugadoresState
-  class LobbyArmadoState
-  class ConfirmadoState
-  class EnJuegoState
-  class FinalizadoState
-  class CanceladoState
+  class BuscandoJugadoresState {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
+    + canalNotificacion(): String
+  }
+
+  class LobbyArmadoState {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
+    + canalNotificacion(): String
+  }
+
+  class ConfirmadoState {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
+    + canalNotificacion(): String
+  }
+
+  class EnJuegoState {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
+    + canalNotificacion(): String
+  }
+
+  class FinalizadoState {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
+    + canalNotificacion(): String
+  }
+
+  class CanceladoState {
+    - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
+    + canalNotificacion(): String
+  }
 }
 
 package "Strategy" {
@@ -252,9 +311,20 @@ package "Strategy" {
     + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
-  class ByMMRStrategy
-  class ByLatencyStrategy
-  class ByHistoryStrategy
+  class ByMMRStrategy {
+    - toleranciaMMR: Integer
+    + seleccionarJugadores(scrim: Scrim): List<Postulacion>
+  }
+
+  class ByLatencyStrategy {
+    - latenciaObjetivo: Integer
+    + seleccionarJugadores(scrim: Scrim): List<Postulacion>
+  }
+
+  class ByHistoryStrategy {
+    - partidasMinimas: Integer
+    + seleccionarJugadores(scrim: Scrim): List<Postulacion>
+  }
 
   class MatchmakingService {
     - strategy: MatchmakingStrategy
@@ -302,11 +372,21 @@ package "Observer y Factory" {
     + createNotifier(canal: String): Notifier
   }
 
-  class EmailNotifier
+  class EmailNotifier {
+    - provider: ExternalNotificationProvider
+    + send(event: DomainEvent): void
+  }
+
   class PushNotifier {
+    - provider: ExternalNotificationProvider
+    + send(event: DomainEvent): void
     - mensajePara(event: DomainEvent): String
   }
-  class DiscordNotifier
+
+  class DiscordNotifier {
+    - provider: ExternalNotificationProvider
+    + send(event: DomainEvent): void
+  }
 }
 
 package "Adapter" {
@@ -325,10 +405,27 @@ package "Adapter" {
     + sendPush(token: String, message: String): void
   }
 
-  class SendGridAdapter
-  class SendGridAPI
-  class DiscordAdapter
-  class DiscordAPI
+  class SendGridAdapter {
+    - api: SendGridAPI
+    + sendMessage(destination: String, payload: String): void
+  }
+
+  class SendGridAPI {
+    - apiKey: String
+    - logger: Consumer<String>
+    + sendEmail(email: String, subject: String, body: String): void
+  }
+
+  class DiscordAdapter {
+    - api: DiscordAPI
+    + sendMessage(destination: String, payload: String): void
+  }
+
+  class DiscordAPI {
+    - webhookUrl: String
+    - logger: Consumer<String>
+    + postToChannel(channelId: String, message: String): void
+  }
 }
 
 Main ..> EScrimsFrame : mostrarInterfaz()
