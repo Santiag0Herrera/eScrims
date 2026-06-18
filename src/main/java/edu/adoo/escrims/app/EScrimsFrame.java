@@ -874,6 +874,7 @@ public class EScrimsFrame extends JFrame {
         eventBus.publish(new DomainEvent(
                 "evt-resumen-" + scrim.getId(),
                 "SCRIM_RESUMEN",
+                scrim.getRegion().getNombre(),
                 "EMAIL",
                 payload
         ));
