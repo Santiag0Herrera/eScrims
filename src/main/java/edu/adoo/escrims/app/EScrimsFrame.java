@@ -71,9 +71,12 @@ import java.awt.Rectangle;
 import java.awt.Cursor;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import edu.adoo.escrims.patterns.observer.DomainEvent;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -234,15 +237,23 @@ public class EScrimsFrame extends JFrame {
         scrimMatchCombo.addActionListener(event -> refreshEquiposGrid());
         JButton ejecutar = new JButton("Armar equipos automaticamente");
         ejecutar.addActionListener(event -> {
-            Scrim scrim = selected(scrimMatchCombo);
-            if (scrim.getPostulaciones().isEmpty()) {
-                showWarning("Ese scrim todavia no tiene postulaciones para armar equipos");
-                return;
+            try {
+                Scrim scrim = selected(scrimMatchCombo);
+                if (scrim.getPostulaciones().isEmpty()) {
+                    showWarning("Ese scrim todavia no tiene postulaciones para armar equipos");
+                    return;
+                }
+                MatchmakingService service = new MatchmakingService(strategyFor((String) strategy.getSelectedItem(), scrim));
+                List<Postulacion> seleccionados = service.ejecutarMatchmaking(scrim);
+                if (seleccionados.isEmpty()) {
+                    showWarning("Ningun jugador es elegible. Verifica que los postulantes tengan perfil para el juego del scrim (" + scrim.getJuego().getNombre() + ").");
+                    return;
+                }
+                log("Equipos armados con criterio '" + strategy.getSelectedItem() + "': " + seleccionados.size() + " jugadores asignados");
+                refreshAll();
+            } catch (RuntimeException ex) {
+                showWarning("Error al armar equipos: " + ex.getMessage());
             }
-            MatchmakingService service = new MatchmakingService(strategyFor((String) strategy.getSelectedItem(), scrim));
-            List<Postulacion> seleccionados = service.ejecutarMatchmaking(scrim);
-            log("Equipos armados con criterio '" + strategy.getSelectedItem() + "': " + seleccionados.size() + " jugadores asignados");
-            refreshAll();
         });
 
         JPanel form = formPanel();
@@ -732,7 +743,12 @@ public class EScrimsFrame extends JFrame {
     }
 
     private void configureEvents() {
-        SendGridAdapter sendGrid = new SendGridAdapter(new SendGridAPI("sendgrid-key", this::log));
+        String sendGridKey = System.getenv("SENDGRID_API_KEY");
+        if (sendGridKey == null || sendGridKey.isBlank()) {
+            sendGridKey = "";
+            log("[Config] ADVERTENCIA: variable de entorno SENDGRID_API_KEY no configurada. Los emails no se enviaran.");
+        }
+        SendGridAdapter sendGrid = new SendGridAdapter(new SendGridAPI(sendGridKey, msg -> SwingUtilities.invokeLater(() -> log(msg))));
         FirebaseAdapter firebase = new FirebaseAdapter(new FirebaseAPI("escrims-app", this::log));
         DiscordAdapter discord = new DiscordAdapter(new DiscordAPI("https://discord.local/webhook", this::log));
         ChannelNotifierFactory factory = new ChannelNotifierFactory(sendGrid, firebase, discord);
@@ -781,6 +797,61 @@ public class EScrimsFrame extends JFrame {
         return usuario;
     }
 
+    private void enviarResumenEmail(Scrim scrim) {
+        String emailsJugadores = scrim.getEquipos().stream()
+                .flatMap(equipo -> equipo.getParticipaciones().stream())
+                .map(participacion -> participacion.getUsuario().getEmail())
+                .collect(java.util.stream.Collectors.joining(","));
+
+        if (emailsJugadores.isBlank()) {
+            showWarning("El scrim no tiene jugadores asignados a equipos. No hay destinatarios para el resumen.");
+            return;
+        }
+
+        StringBuilder statsBuilder = new StringBuilder();
+        for (Equipo equipo : scrim.getEquipos()) {
+            statsBuilder.append(equipo.getLado()).append(":\n");
+            for (Participacion participacion : equipo.getParticipaciones()) {
+                Estadistica stat = findStat(scrim, participacion.getUsuario());
+                statsBuilder.append("  ").append(participacion.getUsuario().getUsername())
+                        .append(" (").append(participacion.getRol()).append(")");
+                if (stat != null) {
+                    statsBuilder.append(" | K=").append(stat.getKills())
+                            .append(" D=").append(stat.getDeaths())
+                            .append(" A=").append(stat.getAssists())
+                            .append(" KDA=").append(String.format("%.2f", stat.calcularKDA()))
+                            .append(" | ").append(stat.getResultado());
+                    if (stat.isMvp()) {
+                        statsBuilder.append(" ★MVP");
+                    }
+                } else {
+                    statsBuilder.append(" | Sin estadisticas");
+                }
+                statsBuilder.append("\n");
+            }
+            statsBuilder.append("\n");
+        }
+
+        Map<String, String> payload = new LinkedHashMap<>();
+        payload.put("jugadores", emailsJugadores);
+        payload.put("juego", scrim.getJuego().getNombre());
+        payload.put("formato", scrim.getFormato());
+        payload.put("modalidad", scrim.getModalidad());
+        payload.put("region", scrim.getRegion().getNombre());
+        payload.put("fecha", scrim.getFechaHora().toString());
+        payload.put("estado", scrim.getEstadoActual());
+        payload.put("estadisticas", statsBuilder.toString());
+
+        eventBus.publish(new DomainEvent(
+                "evt-resumen-" + scrim.getId(),
+                "SCRIM_RESUMEN",
+                "EMAIL",
+                payload
+        ));
+
+        log("Resumen del scrim enviado por email a: " + emailsJugadores);
+    }
+
     private void refreshAll() {
         refreshCombos();
         refreshLists();
@@ -824,12 +895,16 @@ public class EScrimsFrame extends JFrame {
         scrimsGrid.removeAll();
         for (Scrim scrim : scrims) {
             scrimsModel.addElement(scrim + " | estado=" + scrim.getEstadoActual() + " | postulaciones=" + scrim.getPostulaciones().size());
+            boolean finalizado = "Finalizado".equalsIgnoreCase(scrim.getEstadoActual());
+            Dimension cardDim = finalizado
+                    ? new Dimension(480, scrimCardSize(scrim).height)
+                    : scrimCardSize(scrim);
             JPanel scrimCard = card(
                     scrim.toString(),
                     "<html><body style='width:300px'>" + scrimCardDetail(scrim) + "</body></html>",
                     "<html><body style='width:300px'>" + scrimTeamsMeta(scrim) + "</body></html>",
                     colorEstadoScrim(scrim.getEstadoActual()),
-                    scrimCardSize(scrim)
+                    cardDim
             );
             String nextActionLabel = nextActionLabel(scrim);
             if (nextActionLabel != null) {
@@ -845,12 +920,16 @@ public class EScrimsFrame extends JFrame {
                 actions.setOpaque(false);
                 JButton estadistica = new JButton("Cargar estadistica");
                 JButton verEstadisticas = new JButton("Ver estadisticas");
+                JButton enviarResumen = new JButton("Enviar resumen");
                 estadistica.putClientProperty("compact", Boolean.TRUE);
                 verEstadisticas.putClientProperty("compact", Boolean.TRUE);
+                enviarResumen.putClientProperty("compact", Boolean.TRUE);
                 estadistica.addActionListener(event -> showEstadisticaDialog(scrim));
                 verEstadisticas.addActionListener(event -> showEstadisticasViewer(scrim));
+                enviarResumen.addActionListener(event -> enviarResumenEmail(scrim));
                 actions.add(estadistica);
                 actions.add(verEstadisticas);
+                actions.add(enviarResumen);
                 scrimCard.add(actions, BorderLayout.SOUTH);
             }
             scrimCard.setToolTipText("Estado actual: " + scrim.getEstadoActual());

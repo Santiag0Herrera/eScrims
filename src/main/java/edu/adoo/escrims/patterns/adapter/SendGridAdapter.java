@@ -11,6 +11,6 @@ public class SendGridAdapter implements ExternalNotificationProvider {
 
     @Override
     public void sendMessage(String destination, String payload) {
-        api.sendEmail(destination, "Evento eScrims", payload);
+        api.sendEmail(destination, "eScrims - Resumen del scrim", payload);
     }
 }
