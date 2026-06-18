@@ -15,11 +15,22 @@ public class ByMMRStrategy implements MatchmakingStrategy {
 
     @Override
     public List<Postulacion> seleccionarJugadores(Scrim scrim) {
+        int mmrMedio = (scrim.getMmrMinimo() + scrim.getMmrMaximo()) / 2;
         return scrim.getPostulaciones().stream()
                 .filter(postulacion -> "ACEPTADA".equals(postulacion.getEstado()) || "PENDIENTE".equals(postulacion.getEstado()))
-                .sorted(Comparator.comparingInt(postulacion -> Math.abs(postulacion.getUsuario().perfilPara(scrim.getJuego()).getMmr()
-                        - ((scrim.getMmrMinimo() + scrim.getMmrMaximo()) / 2))))
+                .filter(postulacion -> tienePerfilParaJuego(postulacion, scrim))
+                .sorted(Comparator.comparingInt(postulacion -> Math.abs(
+                        postulacion.getUsuario().perfilPara(scrim.getJuego()).getMmr() - mmrMedio)))
                 .limit(scrim.getCantidadJugadores())
                 .toList();
+    }
+
+    private boolean tienePerfilParaJuego(Postulacion postulacion, Scrim scrim) {
+        try {
+            postulacion.getUsuario().perfilPara(scrim.getJuego());
+            return true;
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 }

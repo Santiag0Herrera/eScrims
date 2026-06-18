@@ -171,6 +171,18 @@ public class Scrim {
         return estadoActual;
     }
 
+    public String getFormato() {
+        return formato;
+    }
+
+    public String getModalidad() {
+        return modalidad;
+    }
+
+    public LocalDateTime getFechaHora() {
+        return fechaHora;
+    }
+
     public List<Equipo> getEquipos() {
         return Collections.unmodifiableList(equipos);
     }
