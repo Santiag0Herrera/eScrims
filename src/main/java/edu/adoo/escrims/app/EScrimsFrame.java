@@ -18,7 +18,10 @@ import edu.adoo.escrims.patterns.adapter.FirebaseAPI;
 import edu.adoo.escrims.patterns.adapter.FirebaseAdapter;
 import edu.adoo.escrims.patterns.adapter.SendGridAPI;
 import edu.adoo.escrims.patterns.adapter.SendGridAdapter;
-import edu.adoo.escrims.patterns.factory.ChannelNotifierFactory;
+import edu.adoo.escrims.patterns.factory.EUNotifierFactory;
+import edu.adoo.escrims.patterns.factory.LATAMNotifierFactory;
+import edu.adoo.escrims.patterns.factory.NANotifierFactory;
+import edu.adoo.escrims.patterns.factory.NotifierFactory;
 import edu.adoo.escrims.patterns.observer.DomainEvent;
 import edu.adoo.escrims.patterns.observer.DomainEventBus;
 import edu.adoo.escrims.patterns.observer.NotificationSubscriber;
@@ -746,17 +749,22 @@ public class EScrimsFrame extends JFrame {
         SendGridAdapter sendGrid = new SendGridAdapter(new SendGridAPI("sendgrid-key", this::log));
         FirebaseAdapter firebase = new FirebaseAdapter(new FirebaseAPI("escrims-app", this::log));
         DiscordAdapter discord = new DiscordAdapter(new DiscordAPI(System.getenv("DISCORD_WEBHOOK_URL"), this::log));
-        ChannelNotifierFactory factory = new ChannelNotifierFactory(sendGrid, firebase, discord);
+        Map<String, NotifierFactory> factoriesByRegion = Map.of(
+                "LATAM", new LATAMNotifierFactory(sendGrid, discord),
+                "EU", new EUNotifierFactory(sendGrid, firebase),
+                "NA", new NANotifierFactory(firebase, discord)
+        );
         eventBus = new DomainEventBus();
-        eventBus.subscribe(new NotificationSubscriber(factory));
+        eventBus.subscribe(new NotificationSubscriber(factoriesByRegion));
     }
 
     private void testDiscordNotification() {
         eventBus.publish(new DomainEvent(
                 "evt-discord-test-" + ids.getAndIncrement(),
                 "PRUEBA_DISCORD",
+                "LATAM",
                 "DISCORD",
-                Map.of("mensaje", "Discord conectado correctamente desde eScrims")
+                Map.of("mensaje", "Discord conectado correctamente desde eScrims", "region", "LATAM")
         ));
         log("Prueba de Discord enviada al adaptador");
     }

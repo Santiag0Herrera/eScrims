@@ -10,19 +10,21 @@ public class DomainEvent {
     private final String id;
     private final LocalDateTime timestamp;
     private final String tipo;
+    private final String region;
     private final String canal;
     private final Map<String, String> payload;
 
-    public DomainEvent(String id, String tipo, String canal, Map<String, String> payload) {
+    public DomainEvent(String id, String tipo, String region, String canal, Map<String, String> payload) {
         this.id = Objects.requireNonNull(id);
         this.tipo = Objects.requireNonNull(tipo);
+        this.region = Objects.requireNonNull(region);
         this.canal = Objects.requireNonNull(canal);
         this.payload = new LinkedHashMap<>(payload);
         this.timestamp = LocalDateTime.now();
     }
 
     public String describir() {
-        return tipo + " por " + canal + " " + payload;
+        return tipo + " [" + region + "] por " + canal + " " + payload;
     }
 
     public String getId() {
@@ -35,6 +37,10 @@ public class DomainEvent {
 
     public String getTipo() {
         return tipo;
+    }
+
+    public String getRegion() {
+        return region;
     }
 
     public String getCanal() {

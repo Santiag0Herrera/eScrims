@@ -25,8 +25,9 @@ public class ScrimContext {
         eventBus.publish(new DomainEvent(
                 "evt-" + scrim.getId() + "-" + state.nombre(),
                 "SCRIM_" + state.nombre().toUpperCase(),
+                scrim.getRegion().getNombre(),
                 state.canalNotificacion(),
-                Map.of("scrim", scrim.getId(), "estado", state.nombre())
+                Map.of("scrim", scrim.getId(), "estado", state.nombre(), "region", scrim.getRegion().getNombre())
         ));
     }
 
