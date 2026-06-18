@@ -29,40 +29,40 @@ class PerfilJuego {
   - id: String
   - juego: Juego
   - rango: String
-  - mmr: Integer
+  - mmr: int
   - rolesPreferidos: List<String>
   + actualizarRango(nuevoRango: String): void
-  + actualizarMMR(nuevoMMR: Integer): void
+  + actualizarMMR(nuevoMMR: int): void
 }
 
 class Juego {
   - id: String
   - nombre: String
   - descripcion: String
-  + validarFormato(modalidad: String): Boolean
+  + validarFormato(modalidad: String): boolean
 }
 
 class Region {
   - id: String
   - nombre: String
   - servidor: String
-  + validarLatencia(latencia: Integer): Boolean
+  + validarLatencia(latencia: int): boolean
 }
 
 class Scrim {
   - id: String
   - juego: Juego
   - region: Region
-  - fechaHora: DateTime
-  - duracionMinutos: Integer
-  - mmrMinimo: Integer
-  - mmrMaximo: Integer
-  - latenciaMaxima: Integer
+  - fechaHora: LocalDateTime
+  - duracionMinutos: int
+  - mmrMinimo: int
+  - mmrMaximo: int
+  - latenciaMaxima: int
   - modalidad: String
   - estadoActual: String
-  - cantidadJugadores: Integer
-  - cantidadEquipos: Integer
-  - jugadoresPorEquipo: Integer
+  - cantidadJugadores: int
+  - cantidadEquipos: int
+  - jugadoresPorEquipo: int
   - formato: String
   - equipos: List<Equipo>
   - postulaciones: List<Postulacion>
@@ -84,10 +84,10 @@ class Scrim {
   + agregarReporte(reporte: ReporteConducta): void
   + agregarNotificacion(notificacion: Notificacion): void
   + reiniciarEquipos(): void
-  + yaTieneParticipacion(usuario: Usuario): Boolean
-  + yaSePostulo(usuario: Usuario): Boolean
-  + usuarioYaConfirmo(usuario: Usuario): Boolean
-  + tieneCupoCompleto(): Boolean
+  + yaTieneParticipacion(usuario: Usuario): boolean
+  + yaSePostulo(usuario: Usuario): boolean
+  + usuarioYaConfirmo(usuario: Usuario): boolean
+  + tieneCupoCompleto(): boolean
 }
 
 class Equipo {
@@ -97,19 +97,19 @@ class Equipo {
   + agregarJugador(usuario: Usuario, rol: String): Participacion
   + quitarJugador(participacion: Participacion): void
   + asignarCapitan(participacion: Participacion): void
-  + contieneUsuario(usuario: Usuario): Boolean
+  + contieneUsuario(usuario: Usuario): boolean
   + limpiarParticipaciones(): void
-  + cantidadJugadores(): Integer
+  + cantidadJugadores(): int
 }
 
 class Participacion {
   - id: String
   - usuario: Usuario
   - rol: String
-  - esCapitan: Boolean
-  - esSuplente: Boolean
+  - esCapitan: boolean
+  - esSuplente: boolean
   - estado: String
-  - fechaIngreso: DateTime
+  - fechaIngreso: LocalDateTime
   + cambiarRol(nuevoRol: String): void
   + abandonar(): void
   + asignarCapitan(): void
@@ -121,7 +121,7 @@ class Postulacion {
   - scrim: Scrim
   - rolDeseado: String
   - estado: String
-  - fechaPostulacion: DateTime
+  - fechaPostulacion: LocalDateTime
   + aceptar(): void
   + rechazar(): void
   + confirmarAsistencia(): Confirmacion
@@ -131,11 +131,11 @@ class Confirmacion {
   - id: String
   - usuario: Usuario
   - scrim: Scrim
-  - confirmado: Boolean
-  - fechaConfirmacion: DateTime
+  - confirmado: boolean
+  - fechaConfirmacion: LocalDateTime
   + confirmar(): void
   + revocar(): void
-  + estaConfirmado(): Boolean
+  + estaConfirmado(): boolean
 }
 
 class Notificacion {
@@ -144,7 +144,7 @@ class Notificacion {
   - canal: String
   - payload: String
   - estado: String
-  - fechaEnvio: DateTime
+  - fechaEnvio: LocalDateTime
   + enviar(): void
   + reintentar(): void
 }
@@ -153,13 +153,13 @@ class Estadistica {
   - id: String
   - usuario: Usuario
   - scrim: Scrim
-  - kills: Integer
-  - deaths: Integer
-  - assists: Integer
-  - mvp: Boolean
+  - kills: int
+  - deaths: int
+  - assists: int
+  - mvp: boolean
   - observaciones: String
   - resultado: String
-  + calcularKDA(): Decimal
+  + calcularKDA(): double
 }
 
 class ComentarioFeedback {
@@ -167,9 +167,9 @@ class ComentarioFeedback {
   - usuario: Usuario
   - scrim: Scrim
   - comentario: String
-  - rating: Integer
+  - rating: int
   - estadoModeracion: String
-  - fechaCreacion: DateTime
+  - fechaCreacion: LocalDateTime
   + aprobar(): void
   + rechazar(): void
 }
@@ -182,7 +182,7 @@ class ReporteConducta {
   - motivo: String
   - estado: String
   - sancion: String
-  - fechaCreacion: DateTime
+  - fechaCreacion: LocalDateTime
   + procesar(): void
   + resolver(sancion: String): void
   + obtenerReportante(): Usuario

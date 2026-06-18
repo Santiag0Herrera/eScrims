@@ -9,7 +9,7 @@ class Scrim <<DomainReference>> {
   - id: String
   - estadoActual: String
   + cambiarEstado(nuevoEstado: String): void
-  + tieneCupoCompleto(): Boolean
+  + tieneCupoCompleto(): boolean
 }
 
 class EScrimsFrame <<Swing>> {
@@ -49,31 +49,67 @@ package "State - Ciclo de vida del Scrim" {
 
   class BuscandoJugadoresState <<State>> {
     - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
     + canalNotificacion(): String
   }
 
   class LobbyArmadoState <<State>> {
     - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
     + canalNotificacion(): String
   }
 
   class ConfirmadoState <<State>> {
     - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
     + canalNotificacion(): String
   }
 
   class EnJuegoState <<State>> {
     - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
     + canalNotificacion(): String
   }
 
   class FinalizadoState <<State>> {
     - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
     + canalNotificacion(): String
   }
 
   class CanceladoState <<State>> {
     - nombre: String
+    + postular(context: ScrimContext): void
+    + confirmar(context: ScrimContext): void
+    + iniciar(context: ScrimContext): void
+    + finalizar(context: ScrimContext): void
+    + cancelar(context: ScrimContext): void
+    + nombre(): String
     + canalNotificacion(): String
   }
 }
@@ -84,14 +120,17 @@ package "Strategy - Matchmaking" {
   }
 
   class ByMMRStrategy <<Strategy>> {
+    - toleranciaMMR: int
     + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
   class ByLatencyStrategy <<Strategy>> {
+    - latenciaObjetivo: int
     + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
   class ByHistoryStrategy <<Strategy>> {
+    - partidasMinimas: int
     + seleccionarJugadores(scrim: Scrim): List<Postulacion>
   }
 
@@ -105,7 +144,7 @@ package "Strategy - Matchmaking" {
 package "Observer - Eventos de dominio" {
   class DomainEvent <<Observer>> {
     - id: String
-    - timestamp: DateTime
+    - timestamp: LocalDateTime
     - tipo: String
     - canal: String
     - payload: Map<String, String>
